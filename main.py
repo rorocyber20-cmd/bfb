@@ -110,6 +110,35 @@ KV_CODE = '''
                 size: self.size
                 radius: [10,]
 
+    Button:
+        text: "Test Notification"
+        font_name: "FONTPATH"
+        font_size: '14sp'
+        color: 1, 1, 1, 1
+        size_hint_y: None
+        height: '40dp'
+        background_normal: ''
+        background_down: ''
+        background_color: 0, 0, 0, 0
+        on_press: root.test_notification()
+        canvas.before:
+            Color:
+                rgba: 0.35, 0.35, 0.45, 1
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [10,]
+
+    Label:
+        id: status_label
+        text: ""
+        font_size: '12sp'
+        color: 0.8, 0.2, 0.2, 1
+        size_hint_y: None
+        height: '34dp'
+        text_size: self.width, None
+        halign: 'center'
+
     ScrollView:
         size_hint: (1, 1)
         BoxLayout:
@@ -148,12 +177,15 @@ class BirthdayScreen(BoxLayout):
             layout.add_widget(self.build_row(name, days_left, date_str))
 
     def build_row(self, name, days_left, date_str):
-        info_text = f"Days left: {days_left}  |  Name: {fix_arabic(name)}"
+        info_text = (
+            f"Days left: {days_left}  |  Name: {fix_arabic(name)}\n"
+            f"Birth date: {date_str}"
+        )
 
         row = BoxLayout(
             orientation='horizontal',
             size_hint_y=None,
-            height='55dp',
+            height='70dp',
             padding=10,
             spacing=10,
         )
@@ -209,6 +241,25 @@ class BirthdayScreen(BoxLayout):
             print(f"[خطأ أثناء الحذف]: {e}")
         self.refresh_list()
 
+    def set_status(self, errors):
+        """يعرض آخر خطأ في الإشعارات على الشاشة (أو يمسحه)."""
+        label = self.ids.status_label
+        if not errors:
+            label.text = ""
+        elif isinstance(errors, str):
+            label.text = errors
+        else:
+            label.text = "Notification error: " + str(errors[0])
+
+    def test_notification(self):
+        ok, err = core.test_notification()
+        if ok:
+            self.ids.status_label.color = (0.1, 0.6, 0.2, 1)
+            self.ids.status_label.text = "Notification sent. If you see nothing, check phone settings."
+        else:
+            self.ids.status_label.color = (0.8, 0.2, 0.2, 1)
+            self.ids.status_label.text = "Error: " + err
+
     def add_birthday(self):
         name = self.ids.name_input.text.strip()
         date_str = self.ids.date_input.text.strip()
@@ -235,10 +286,8 @@ class BirthdayScreen(BoxLayout):
         self.ids.date_input.text = ""
         self.refresh_list()
         # فحص فوري (مثلًا لو كان الموعد بعد 7 أيام أو يوم)
-        try:
-            core.check_and_notify()
-        except Exception as e:
-            print(f"[notify error]: {e}")
+        self.ids.status_label.color = (0.8, 0.2, 0.2, 1)
+        self.set_status(core.check_and_notify())
 
 
 class BFBApp(App):
@@ -261,9 +310,9 @@ class BFBApp(App):
 
     def start_background(self, *args):
         try:
-            core.check_and_notify()
+            self.root.set_status(core.check_and_notify())
         except Exception as e:
-            print(f"[notify error]: {e}")
+            core.log(f"start check: {e}")
         try:
             from android import AndroidService
             svc = AndroidService('BFB Reminder', 'تذكير أعياد الميلاد يعمل')
