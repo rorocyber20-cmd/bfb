@@ -1,6 +1,9 @@
 import json
 import os
+import time
 from datetime import date, datetime
+
+CHANNEL_ID = 'bfb_birthdays'
 
 
 def data_dir():
@@ -14,6 +17,15 @@ def data_dir():
 
 DATA_FILE = os.path.join(data_dir(), 'birthdays.json')
 NOTIFIED_FILE = os.path.join(data_dir(), 'notified.json')
+LOG_FILE = os.path.join(data_dir(), 'log.txt')
+
+
+def log(msg):
+    try:
+        with open(LOG_FILE, 'a', encoding='utf-8') as f:
+            f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} {msg}\n")
+    except Exception:
+        pass
 
 
 def _read(path, default):
@@ -63,10 +75,96 @@ def days_until(date_str, today=None):
     return (nxt - today).days
 
 
-def check_and_notify():
-    """يرسل إشعار قبل أسبوع وقبل يوم، مرة واحدة فقط لكل موعد."""
-    from plyer import notification
+# ---------------------------------------------------------------
+# الإشعارات (مباشرة عبر نظام أندرويد، بدون plyer)
+# ---------------------------------------------------------------
+def _get_context():
+    from jnius import autoclass
+    activity = autoclass('org.kivy.android.PythonActivity').mActivity
+    if activity is not None:
+        return activity
+    return autoclass('org.kivy.android.PythonService').mService
 
+
+def send_notification(title, message):
+    """يرجع (True, '') عند النجاح، أو (False, سبب الفشل)."""
+    try:
+        from kivy.utils import platform
+    except Exception:
+        platform = ''
+
+    if platform != 'android':
+        try:
+            from plyer import notification
+            notification.notify(title=title, message=message, timeout=10)
+            return True, ''
+        except Exception as e:
+            return False, str(e)
+
+    try:
+        from jnius import autoclass
+
+        Context = autoclass('android.content.Context')
+        VERSION = autoclass('android.os.Build$VERSION')
+        JString = autoclass('java.lang.String')
+        Builder = autoclass('android.app.Notification$Builder')
+
+        ctx = _get_context()
+        if ctx is None:
+            return False, 'No Android context'
+
+        nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE)
+
+        if not nm.areNotificationsEnabled():
+            return False, 'Notifications are OFF for this app (phone settings)'
+
+        if VERSION.SDK_INT >= 26:
+            NChannel = autoclass('android.app.NotificationChannel')
+            NManager = autoclass('android.app.NotificationManager')
+            channel = NChannel(
+                CHANNEL_ID,
+                JString('Birthday reminders'.encode('utf-8')),
+                NManager.IMPORTANCE_HIGH,
+            )
+            nm.createNotificationChannel(channel)
+            builder = Builder(ctx, CHANNEL_ID)
+        else:
+            builder = Builder(ctx)
+
+        icon = ctx.getApplicationInfo().icon
+        if not icon:
+            icon = autoclass('android.R$drawable').ic_dialog_info
+        builder.setSmallIcon(icon)
+        builder.setContentTitle(JString(title.encode('utf-8')))
+        builder.setContentText(JString(message.encode('utf-8')))
+        builder.setAutoCancel(True)
+
+        # الضغط على الإشعار يفتح التطبيق (اختياري، لا يوقف الإشعار إن فشل)
+        try:
+            PendingIntent = autoclass('android.app.PendingIntent')
+            intent = ctx.getPackageManager().getLaunchIntentForPackage(
+                ctx.getPackageName())
+            flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+            builder.setContentIntent(
+                PendingIntent.getActivity(ctx, 0, intent, flags))
+        except Exception as e:
+            log(f"pending intent: {e}")
+
+        nm.notify(int(time.time()) % 100000, builder.build())
+        return True, ''
+    except Exception as e:
+        log(f"send_notification failed: {e}")
+        return False, str(e)
+
+
+def test_notification():
+    return send_notification("BFB Reminder", "اختبار الإشعارات ✅")
+
+
+def check_and_notify():
+    """يرسل إشعار قبل أسبوع وقبل يوم، مرة واحدة فقط لكل موعد.
+    يرجع قائمة بأخطاء الإرسال (فارغة إن لم يحدث خطأ)."""
+    errors = []
     today_str = date.today().isoformat()
     notified = _read(NOTIFIED_FILE, {})
     changed = False
@@ -89,15 +187,17 @@ def check_and_notify():
         else:
             msg = f"باقي يوم واحد فقط على عيد ميلاد: {item['name']}!"
 
-        try:
-            notification.notify(title="تنبيه عيد ميلاد 🎂", message=msg, timeout=10)
+        ok, err = send_notification("تنبيه عيد ميلاد 🎂", msg)
+        if ok:
             notified[key] = today_str
             changed = True
-        except Exception as e:
-            print(f"[خطأ إشعار]: {e}")
+        else:
+            errors.append(err)
 
     if changed:
         try:
             _write(NOTIFIED_FILE, notified)
         except Exception as e:
-            print(f"[خطأ حفظ]: {e}")
+            log(f"save notified: {e}")
+
+    return errors
