@@ -118,13 +118,15 @@
         padding: dp(16)
         spacing: dp(12)
         Label:
-            text: 'BFB Reminder'
+            text: 'BFB'
             font_name: app.font
-            font_size: sp(26) * app.font_scale
+            font_size: sp(44) * app.font_scale
             bold: True
             color: app.primary_color
             size_hint_y: None
-            height: dp(46)
+            height: root.height * 0.26
+            halign: 'center'
+            valign: 'middle'
         InputBox:
             CustomTextInput:
                 id: name_input
