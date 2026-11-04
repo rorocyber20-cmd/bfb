@@ -2,12 +2,15 @@ import os
 
 from kivy.app import App
 from kivy.clock import Clock
-from kivy.graphics import Color, RoundedRectangle
+from kivy.core.text import LabelBase
+from kivy.core.window import Window
 from kivy.lang import Builder
+from kivy.properties import ListProperty, NumericProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.label import Label
+from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
+from kivy.uix.togglebutton import ToggleButton
 from kivy.utils import platform
 from datetime import datetime
 
@@ -15,7 +18,12 @@ import core
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_FILE = os.path.join(BASE_DIR, 'Cairo-Regular.ttf')
-ACTIVE_FONT = FONT_FILE if os.path.exists(FONT_FILE) else 'Roboto'
+
+if os.path.exists(FONT_FILE):
+    LabelBase.register(name='Cairo', fn_regular=FONT_FILE)
+    FONT_NAME = 'Cairo'
+else:
+    FONT_NAME = 'Roboto'
 
 # تشكيل الحروف العربية وترتيبها (إن توفرت المكتبتان)
 try:
@@ -32,134 +40,70 @@ except Exception:
         return text
 
 
-KV_CODE = '''
-<CustomTextInput>:
-    multiline: False
-    font_name: "FONTPATH"
-    font_size: "16sp"
-    padding: [15, 15, 15, 15]
-    background_color: 0, 0, 0, 0
-    foreground_color: 0.2, 0.2, 0.2, 1
+THEMES = {
+    'light': {
+        'bg': [0.94, 0.95, 0.97, 1],
+        'card': [1, 1, 1, 1],
+        'text': [0.2, 0.2, 0.2, 1],
+        'muted': [0.5, 0.5, 0.55, 1],
+    },
+    'dark': {
+        'bg': [0.08, 0.09, 0.11, 1],
+        'card': [0.14, 0.15, 0.18, 1],
+        'text': [0.92, 0.92, 0.95, 1],
+        'muted': [0.55, 0.57, 0.62, 1],
+    },
+}
 
-<BirthdayScreen>:
-    orientation: 'vertical'
-    padding: 20
-    spacing: 15
-    canvas.before:
-        Color:
-            rgba: 0.94, 0.95, 0.97, 1
-        Rectangle:
-            pos: self.pos
-            size: self.size
+ACCENTS = {
+    'blue': [0.10, 0.50, 0.80, 1],
+    'green': [0.18, 0.62, 0.35, 1],
+    'purple': [0.55, 0.35, 0.80, 1],
+    'orange': [0.93, 0.55, 0.15, 1],
+    'red': [0.85, 0.25, 0.30, 1],
+    'teal': [0.10, 0.60, 0.60, 1],
+}
 
-    Label:
-        text: "BFB Reminder"
-        font_name: "FONTPATH"
-        font_size: '26sp'
-        bold: True
-        color: 0.1, 0.4, 0.7, 1
-        size_hint_y: None
-        height: '50dp'
-        halign: 'center'
 
-    BoxLayout:
-        size_hint_y: None
-        height: '50dp'
-        canvas.before:
-            Color:
-                rgba: 1, 1, 1, 1
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [10,]
-        CustomTextInput:
-            id: name_input
-            hint_text: "Enter Name"
+# ---------------------------------------------------------------
+# عناصر الواجهة (شكلها معرّف في ui.kv)
+# ---------------------------------------------------------------
+class StyledButton(Button):
+    custom_bg = ListProperty([])
 
-    BoxLayout:
-        size_hint_y: None
-        height: '50dp'
-        canvas.before:
-            Color:
-                rgba: 1, 1, 1, 1
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [10,]
-        CustomTextInput:
-            id: date_input
-            hint_text: "YYYY-MM-DD"
 
-    Button:
-        text: "Add Birthday"
-        font_name: "FONTPATH"
-        font_size: '16sp'
-        bold: True
-        color: 1, 1, 1, 1
-        size_hint_y: None
-        height: '50dp'
-        background_normal: ''
-        background_down: ''
-        background_color: 0, 0, 0, 0
-        on_press: root.add_birthday()
-        canvas.before:
-            Color:
-                rgba: 0.1, 0.5, 0.8, 1
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [10,]
-
-    Button:
-        text: "Test Notification"
-        font_name: "FONTPATH"
-        font_size: '14sp'
-        color: 1, 1, 1, 1
-        size_hint_y: None
-        height: '40dp'
-        background_normal: ''
-        background_down: ''
-        background_color: 0, 0, 0, 0
-        on_press: root.test_notification()
-        canvas.before:
-            Color:
-                rgba: 0.35, 0.35, 0.45, 1
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [10,]
-
-    Label:
-        id: status_label
-        text: ""
-        font_size: '12sp'
-        color: 0.8, 0.2, 0.2, 1
-        size_hint_y: None
-        height: '34dp'
-        text_size: self.width, None
-        halign: 'center'
-
-    ScrollView:
-        size_hint: (1, 1)
-        BoxLayout:
-            id: list_layout
-            orientation: 'vertical'
-            size_hint_y: None
-            height: self.minimum_height
-            spacing: 10
-            padding: 5
-'''.replace("FONTPATH", FONT_FILE.replace("\\", "/"))
-
-Builder.load_string(KV_CODE)
+class NavButton(ToggleButton):
+    pass
 
 
 class CustomTextInput(TextInput):
     pass
 
 
-class BirthdayScreen(BoxLayout):
+class BirthdayRow(BoxLayout):
+    info = StringProperty('')
+    bname = StringProperty('')
+    bdate = StringProperty('')
+
+
+class GiftScreen(Screen):
+    pass
+
+
+class GamesScreen(Screen):
+    pass
+
+
+class SettingsScreen(Screen):
+    pass
+
+
+class BirthdaysScreen(Screen):
     def on_kv_post(self, base_widget):
         Clock.schedule_once(lambda dt: self.refresh_list(), 0.2)
+
+    def on_pre_enter(self, *args):
+        self.refresh_list()
 
     def refresh_list(self):
         layout = self.ids.list_layout
@@ -174,62 +118,150 @@ class BirthdayScreen(BoxLayout):
 
         rows.sort(key=lambda r: r[0])
         for days_left, name, date_str in rows:
-            layout.add_widget(self.build_row(name, days_left, date_str))
+            info = (
+                f"Days left: {days_left}  |  Name: {fix_arabic(name)}\n"
+                f"Birth date: {date_str}"
+            )
+            layout.add_widget(BirthdayRow(info=info, bname=name, bdate=date_str))
 
-    def build_row(self, name, days_left, date_str):
-        info_text = (
-            f"Days left: {days_left}  |  Name: {fix_arabic(name)}\n"
-            f"Birth date: {date_str}"
-        )
+    def add_birthday(self):
+        app = App.get_running_app()
+        name = self.ids.name_input.text.strip()
+        date_str = self.ids.date_input.text.strip()
 
-        row = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height='70dp',
-            padding=10,
-            spacing=10,
-        )
+        if not name or not date_str:
+            app.show_status("Please enter a name and a date")
+            return
 
-        with row.canvas.before:
-            Color(1, 1, 1, 1)
-            row.rect = RoundedRectangle(pos=row.pos, size=row.size, radius=[8, ])
+        try:
+            datetime.strptime(date_str, "%Y-%m-%d")
+        except ValueError:
+            app.show_status("Wrong date format. Use YYYY-MM-DD")
+            return
 
-        def update_rect(inst, _):
-            inst.rect.pos = inst.pos
-            inst.rect.size = inst.size
+        items = core.load_birthdays()
+        items.append({'name': name, 'date': date_str})
+        try:
+            core.save_birthdays(items)
+        except Exception as e:
+            app.show_status(f"Save error: {e}")
+            return
 
-        row.bind(pos=update_rect, size=update_rect)
+        self.ids.name_input.text = ""
+        self.ids.date_input.text = ""
+        self.refresh_list()
+        # فحص فوري (مثلًا لو كان الموعد بعد 7 أيام أو يوم)
+        app.show_status(core.check_and_notify())
 
-        label = Label(
-            text=info_text,
-            font_name=ACTIVE_FONT,
-            size_hint_x=0.75,
-            color=(0.2, 0.2, 0.2, 1),
-            font_size='14sp',
-            halign='left',
-            valign='middle',
-        )
-        label.bind(size=lambda s, _: setattr(s, 'text_size', s.size))
 
-        btn = Button(
-            text="Delete",
-            font_name=ACTIVE_FONT,
-            size_hint_x=0.25,
-            color=(1, 1, 1, 1),
-            background_normal='',
-            background_down='',
-            background_color=(0, 0, 0, 0),
-        )
-        with btn.canvas.before:
-            Color(0.85, 0.2, 0.2, 1)
-            btn.rect = RoundedRectangle(pos=btn.pos, size=btn.size, radius=[6, ])
-        btn.bind(pos=update_rect, size=update_rect)
-        btn.bind(on_press=lambda x: self.delete_birthday(name, date_str))
+# ---------------------------------------------------------------
+# التطبيق
+# ---------------------------------------------------------------
+class BFBApp(App):
+    ACCENTS = ACCENTS
 
-        row.add_widget(label)
-        row.add_widget(btn)
-        return row
+    font = StringProperty(FONT_NAME)
+    bg_color = ListProperty(THEMES['light']['bg'])
+    card_color = ListProperty(THEMES['light']['card'])
+    text_color = ListProperty(THEMES['light']['text'])
+    muted_color = ListProperty(THEMES['light']['muted'])
+    primary_color = ListProperty(ACCENTS['blue'])
+    radius = NumericProperty(10)
+    btn_height = NumericProperty(50)
+    font_scale = NumericProperty(1.0)
+    status = StringProperty('')
+    status_color = ListProperty([0.85, 0.2, 0.2, 1])
 
+    def build(self):
+        Window.softinput_mode = 'below_target'
+        self.prefs = core.load_settings()
+        self.apply_prefs()
+        return Builder.load_file(os.path.join(BASE_DIR, 'ui.kv'))
+
+    # ---------- الإعدادات ----------
+    def apply_prefs(self):
+        theme = THEMES.get(self.prefs.get('theme'), THEMES['light'])
+        self.bg_color = theme['bg']
+        self.card_color = theme['card']
+        self.text_color = theme['text']
+        self.muted_color = theme['muted']
+        self.primary_color = ACCENTS.get(self.prefs.get('accent'), ACCENTS['blue'])
+        self.radius = float(self.prefs.get('radius', 10))
+        self.btn_height = float(self.prefs.get('btn_height', 50))
+        self.font_scale = float(self.prefs.get('font_scale', 1.0))
+
+    def _save_later(self):
+        Clock.unschedule(self._save_prefs)
+        Clock.schedule_once(self._save_prefs, 0.6)
+
+    def _save_prefs(self, *args):
+        try:
+            core.save_settings(self.prefs)
+        except Exception as e:
+            core.log(f"save settings: {e}")
+
+    def set_theme(self, name):
+        self.prefs['theme'] = name
+        self.apply_prefs()
+        self._save_later()
+
+    def set_accent(self, name):
+        self.prefs['accent'] = name
+        self.apply_prefs()
+        self._save_later()
+
+    def set_radius(self, value):
+        if abs(self.radius - value) < 0.001:
+            return
+        self.prefs['radius'] = float(value)
+        self.radius = float(value)
+        self._save_later()
+
+    def set_btn_height(self, value):
+        if abs(self.btn_height - value) < 0.001:
+            return
+        self.prefs['btn_height'] = float(value)
+        self.btn_height = float(value)
+        self._save_later()
+
+    def set_font_scale(self, value):
+        if abs(self.font_scale - value) < 0.001:
+            return
+        self.prefs['font_scale'] = round(float(value), 2)
+        self.font_scale = round(float(value), 2)
+        self._save_later()
+
+    def reset_settings(self):
+        self.prefs = dict(core.DEFAULT_SETTINGS)
+        self.apply_prefs()
+        self._save_later()
+
+    # ---------- التنقل ----------
+    def go(self, screen_name):
+        self.root.ids.sm.current = screen_name
+
+    # ---------- الحالة والإشعارات ----------
+    def show_status(self, errors, ok=False):
+        if not errors:
+            self.status = ''
+            return
+        if isinstance(errors, str):
+            msg = errors
+        else:
+            msg = "Notification error: " + str(errors[0])
+        self.status = msg
+        self.status_color = [0.1, 0.6, 0.2, 1] if ok else [0.85, 0.2, 0.2, 1]
+
+    def test_notification(self):
+        ok, err = core.test_notification()
+        if ok:
+            self.show_status(
+                "Notification sent. If you see nothing, check phone settings.",
+                ok=True)
+        else:
+            self.show_status("Error: " + err)
+
+    # ---------- بيانات ----------
     def delete_birthday(self, name, date_str):
         items = [
             b for b in core.load_birthdays()
@@ -238,62 +270,10 @@ class BirthdayScreen(BoxLayout):
         try:
             core.save_birthdays(items)
         except Exception as e:
-            print(f"[خطأ أثناء الحذف]: {e}")
-        self.refresh_list()
+            self.show_status(f"Delete error: {e}")
+        self.root.ids.sm.get_screen('birthdays').refresh_list()
 
-    def set_status(self, errors):
-        """يعرض آخر خطأ في الإشعارات على الشاشة (أو يمسحه)."""
-        label = self.ids.status_label
-        if not errors:
-            label.text = ""
-        elif isinstance(errors, str):
-            label.text = errors
-        else:
-            label.text = "Notification error: " + str(errors[0])
-
-    def test_notification(self):
-        ok, err = core.test_notification()
-        if ok:
-            self.ids.status_label.color = (0.1, 0.6, 0.2, 1)
-            self.ids.status_label.text = "Notification sent. If you see nothing, check phone settings."
-        else:
-            self.ids.status_label.color = (0.8, 0.2, 0.2, 1)
-            self.ids.status_label.text = "Error: " + err
-
-    def add_birthday(self):
-        name = self.ids.name_input.text.strip()
-        date_str = self.ids.date_input.text.strip()
-
-        if not name or not date_str:
-            print("الرجاء إدخال الاسم والتاريخ!")
-            return
-
-        try:
-            datetime.strptime(date_str, "%Y-%m-%d")
-        except ValueError:
-            print("تنسيق التاريخ غير صحيح، استعمل YYYY-MM-DD")
-            return
-
-        items = core.load_birthdays()
-        items.append({'name': name, 'date': date_str})
-        try:
-            core.save_birthdays(items)
-        except Exception as e:
-            print(f"[خطأ في الحفظ]: {e}")
-            return
-
-        self.ids.name_input.text = ""
-        self.ids.date_input.text = ""
-        self.refresh_list()
-        # فحص فوري (مثلًا لو كان الموعد بعد 7 أيام أو يوم)
-        self.ids.status_label.color = (0.8, 0.2, 0.2, 1)
-        self.set_status(core.check_and_notify())
-
-
-class BFBApp(App):
-    def build(self):
-        return BirthdayScreen()
-
+    # ---------- التشغيل ----------
     def on_start(self):
         if platform == 'android':
             try:
@@ -303,14 +283,14 @@ class BFBApp(App):
                     lambda perms, grants: self.start_background()
                 )
             except Exception as e:
-                print(f"[permission error]: {e}")
+                core.log(f"permission error: {e}")
                 self.start_background()
         else:
-            Clock.schedule_once(lambda dt: core.check_and_notify(), 1)
+            Clock.schedule_once(lambda dt: self.show_status(core.check_and_notify()), 1)
 
     def start_background(self, *args):
         try:
-            self.root.set_status(core.check_and_notify())
+            self.show_status(core.check_and_notify())
         except Exception as e:
             core.log(f"start check: {e}")
         try:
@@ -318,7 +298,7 @@ class BFBApp(App):
             svc = AndroidService('BFB Reminder', 'تذكير أعياد الميلاد يعمل')
             svc.start('service started')
         except Exception as e:
-            print(f"[service error]: {e}")
+            core.log(f"service error: {e}")
 
 
 if __name__ == '__main__':
