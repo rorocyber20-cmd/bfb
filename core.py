@@ -58,6 +58,32 @@ def save_birthdays(items):
     _write(DATA_FILE, items)
 
 
+# ---------------------------------------------------------------
+# إعدادات المظهر
+# ---------------------------------------------------------------
+SETTINGS_FILE = os.path.join(data_dir(), 'settings.json')
+
+DEFAULT_SETTINGS = {
+    'theme': 'light',
+    'accent': 'blue',
+    'radius': 10,
+    'btn_height': 50,
+    'font_scale': 1.0,
+}
+
+
+def load_settings():
+    data = _read(SETTINGS_FILE, {})
+    merged = dict(DEFAULT_SETTINGS)
+    if isinstance(data, dict):
+        merged.update({k: v for k, v in data.items() if k in DEFAULT_SETTINGS})
+    return merged
+
+
+def save_settings(prefs):
+    _write(SETTINGS_FILE, prefs)
+
+
 def _safe_replace_year(d, year):
     try:
         return d.replace(year=year)
