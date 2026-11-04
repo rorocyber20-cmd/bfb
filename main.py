@@ -1,4 +1,5 @@
 import os
+import traceback
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -14,16 +15,43 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.utils import platform
 from datetime import datetime
 
-import core
+IMPORT_ERROR = ''
+try:
+    import core
+except Exception:
+    core = None
+    IMPORT_ERROR = traceback.format_exc()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_FILE = os.path.join(BASE_DIR, 'Cairo-Regular.ttf')
 
-if os.path.exists(FONT_FILE):
-    LabelBase.register(name='Cairo', fn_regular=FONT_FILE)
-    FONT_NAME = 'Cairo'
-else:
-    FONT_NAME = 'Roboto'
+FONT_NAME = 'Roboto'
+FONT_ERROR = ''
+try:
+    if os.path.exists(FONT_FILE):
+        LabelBase.register(name='Cairo', fn_regular=FONT_FILE)
+        FONT_NAME = 'Cairo'
+except Exception:
+    FONT_ERROR = traceback.format_exc()
+
+
+def error_screen(text):
+    """شاشة تعرض الخطأ بدل إغلاق التطبيق (للتشخيص)."""
+    from kivy.uix.label import Label
+    from kivy.uix.scrollview import ScrollView
+    label = Label(
+        text="BFB Reminder - startup error\n\n" + text,
+        size_hint_y=None,
+        halign='left',
+        valign='top',
+        font_size='12sp',
+        color=(1, 1, 1, 1),
+    )
+    label.bind(width=lambda inst, w: setattr(inst, 'text_size', (w - 20, None)))
+    label.bind(texture_size=lambda inst, s: setattr(inst, 'height', s[1] + 20))
+    sv = ScrollView()
+    sv.add_widget(label)
+    return sv
 
 # تشكيل الحروف العربية وترتيبها (إن توفرت المكتبتان)
 try:
@@ -173,10 +201,27 @@ class BFBApp(App):
     status_color = ListProperty([0.85, 0.2, 0.2, 1])
 
     def build(self):
-        Window.softinput_mode = 'below_target'
-        self.prefs = core.load_settings()
-        self.apply_prefs()
-        return Builder.load_file(os.path.join(BASE_DIR, 'ui.kv'))
+        self.build_failed = False
+        if core is None:
+            self.build_failed = True
+            return error_screen(IMPORT_ERROR)
+        try:
+            Window.softinput_mode = 'below_target'
+            self.prefs = core.load_settings()
+            self.apply_prefs()
+            kv_path = os.path.join(BASE_DIR, 'ui.kv')
+            if not os.path.exists(kv_path):
+                files = ', '.join(sorted(os.listdir(BASE_DIR)))
+                raise FileNotFoundError(f"ui.kv not found in {BASE_DIR}\nFiles: {files}")
+            return Builder.load_file(kv_path)
+        except Exception:
+            self.build_failed = True
+            tb = traceback.format_exc()
+            try:
+                core.log(tb)
+            except Exception:
+                pass
+            return error_screen(tb + ("\nFONT: " + FONT_ERROR if FONT_ERROR else ""))
 
     # ---------- الإعدادات ----------
     def apply_prefs(self):
@@ -275,6 +320,8 @@ class BFBApp(App):
 
     # ---------- التشغيل ----------
     def on_start(self):
+        if getattr(self, 'build_failed', False):
+            return
         if platform == 'android':
             try:
                 from android.permissions import request_permissions
