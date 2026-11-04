@@ -128,12 +128,16 @@ class SettingsScreen(Screen):
 
 class BirthdaysScreen(Screen):
     def on_kv_post(self, base_widget):
-        Clock.schedule_once(lambda dt: self.refresh_list(), 0.2)
+        Clock.schedule_once(self.refresh_list, 0.2)
 
     def on_pre_enter(self, *args):
         self.refresh_list()
 
-    def refresh_list(self):
+    def refresh_list(self, *args):
+        # قد يُستدعى أثناء بناء الشاشة قبل أن تكتمل عناصرها
+        if 'list_layout' not in self.ids:
+            Clock.schedule_once(self.refresh_list, 0.2)
+            return
         layout = self.ids.list_layout
         layout.clear_widgets()
 
