@@ -16,7 +16,7 @@ TAG_NAMES = {
     'gaming': ('Gaming', 'الألعاب'),
     'travel': ('Travel & outdoors', 'السفر والطبيعة'),
     'home': ('Home & decor', 'المنزل والديكور'),
-    'faith': ('Faith & spirituality', 'الإيمان والروحانيات'),
+    'faith': ('Religion', 'الدين'),
     'practical': ('Practical', 'عملية'),
     'sentimental': ('Sentimental', 'عاطفية'),
     'fun': ('Fun', 'ممتعة'),
@@ -71,7 +71,6 @@ GIFTS = [
     # --- رياضة ---
     ('bottle', 'Insulated water bottle', 'قارورة ماء حرارية', None, 'tyas', 1, 'sport practical travel', ALL),
     ('gymbag', 'Gym bag', 'حقيبة رياضة', None, 'tya', 2, 'sport practical', ALL),
-    ('yogamat', 'Yoga mat', 'سجادة يوغا', None, 'ya', 1, 'sport calm homebody', ALL),
     ('football', 'Football', 'كرة قدم', None, 'ct', 1, 'sport fun social', ALL),
     ('bands', 'Resistance bands set', 'مجموعة أحبال مقاومة', None, 'ya', 1, 'sport practical homebody', ALL),
     ('jersey', 'Favorite team jersey', 'قميص فريقه المفضل', None, 'tya', 2, 'sport fun personal', ALL),
@@ -83,26 +82,22 @@ GIFTS = [
     ('readlamp', 'Reading lamp', 'مصباح قراءة', None, 'yas', 1, 'read home calm homebody', ALL),
     ('course', 'Online course subscription', 'اشتراك في دورة تعليمية', None, 'tya', 2, 'read tech practical', ALL),
     ('langapp', 'Language-learning subscription', 'اشتراك لتعلّم لغة', None, 'tya', 1, 'read tech practical', ALL),
-    ('sciencekit', 'Science experiment kit', 'مجموعة تجارب علمية', None, 'ct', 1, 'read creative fun', ALL),
     ('kidbooks', 'Illustrated story books', 'كتب قصص مصوّرة', None, 'c', 1, 'read fun calm', ALL),
     # --- طعام وطبخ ---
     ('chocolate', 'Premium chocolate box', 'علبة شوكولاتة فاخرة', None, 'ctyas', 1, 'food sweets sentimental', ALL),
     ('dates', 'Dates and nuts gift basket', 'سلة تمور ومكسّرات', None, 'tyas', 1, 'food sweets faith practical', ALL),
     ('coffeeset', 'Coffee set', 'طقم قهوة', None, 'yas', 2, 'food home calm luxury', ALL),
     ('teaset', 'Fine tea gift set', 'مجموعة شاي فاخر', None, 'yas', 1, 'food calm home', ALL),
-    ('cookclass', 'Cooking class voucher', 'قسيمة حصة طبخ', None, 'ya', 2, 'food creative social fun', ALL),
     ('airfryer', 'Air fryer or blender', 'قلاية هوائية أو خلاط', None, 'yas', 3, 'food practical home', ALL),
     ('bakingset', 'Baking tools set', 'طقم أدوات الحلويات', None, 'tya', 1, 'food creative home', ALL),
-    ('honey', 'Local honey and olive oil basket', 'سلة عسل وزيت زيتون محلي', None, 'as', 1, 'food home practical', ALL),
+    ('honey', 'Honey basket', 'سلة عسل', None, 'as', 1, 'food home practical', ALL),
     ('customcake', 'Custom birthday cake', 'كعكة عيد ميلاد مخصصة', None, 'ctyas', 1, 'food sweets fun social', ALL),
     # --- فن وإبداع ---
     ('sketch', 'Sketching and drawing set', 'طقم رسم وتخطيط', None, 'cty', 1, 'art creative calm', ALL),
     ('paintnum', 'Paint-by-numbers canvas', 'لوحة تلوين بالأرقام', None, 'tya', 1, 'art creative calm homebody', ALL),
     ('instantcam', 'Instant camera', 'كاميرا فورية', None, 'tya', 3, 'art tech fun creative social sentimental', ALL),
-    ('photoalbum', 'Photo album or framed photo collage', 'ألبوم صور أو إطار صور مجمّعة', None, 'tyas', 1, 'sentimental personal art', ALL),
     ('portrait', 'Hand-drawn portrait', 'بورتريه مرسوم يدويًا', None, 'tya', 2, 'art sentimental personal', ALL),
     ('diykit', 'DIY craft kit', 'مجموعة أعمال يدوية', None, 'cty', 1, 'creative art fun', ALL),
-    ('calligraphy', 'Arabic calligraphy set', 'طقم خط عربي', None, 'tya', 1, 'art faith creative calm', ALL),
     # --- موسيقى ---
     ('headphones', 'Over-ear headphones', 'سماعة رأس عالية الجودة', None, 'tya', 3, 'music tech luxury', ALL),
     ('ukulele', 'Ukulele or a small instrument', 'يوكليلي أو آلة موسيقية صغيرة', None, 'tya', 2, 'music creative fun', ALL),
@@ -142,12 +137,10 @@ GIFTS = [
     # --- رومانسية (للشريك) ---
     ('dinner', 'Romantic dinner for two', 'عشاء رومانسي لشخصين', None, 'yas', 2, 'sentimental luxury social', {'partner'}),
     ('flowers', 'Flower bouquet', 'باقة ورد', 'f', 'tyas', 1, 'sentimental beauty', NO_COL),
-    ('loveletter', 'Handwritten letter with a photo book', 'رسالة بخط يدك مع ألبوم صور', None, 'ya', 1, 'sentimental personal', {'partner'}),
     ('couplebracelets', 'Matching bracelets', 'أساور متطابقة', None, 'tya', 1, 'sentimental personal fun', {'partner'}),
     ('getaway', 'Weekend getaway', 'عطلة نهاية أسبوع', None, 'ya', 3, 'travel sentimental luxury adventurous', {'partner'}),
     # --- عمل وزملاء ---
     ('deskorg', 'Desk organizer', 'منظّم مكتب', None, 'ya', 1, 'practical home', {'colleague', 'friend'}),
-    ('giftcard', 'Gift card for their favorite store', 'بطاقة هدية لمتجره المفضل', None, 'tyas', 2, 'practical fun', ALL),
     ('plantdesk', 'Small desk plant', 'نبتة صغيرة للمكتب', None, 'yas', 1, 'home calm practical', {'colleague', 'friend'}),
     # --- للوالدين وكبار السن ---
     ('massage', 'Massage cushion', 'وسادة تدليك', None, 'as', 2, 'practical calm homebody', {'parent', 'relative', 'partner'}),
@@ -176,7 +169,7 @@ INTERESTS = [
     ('gaming', 'Gaming', 'الألعاب الإلكترونية'),
     ('travel', 'Travel & outdoors', 'السفر والطبيعة'),
     ('home', 'Home & decor', 'المنزل والديكور'),
-    ('faith', 'Faith & spirituality', 'الإيمان والروحانيات'),
+    ('faith', 'Religion', 'الدين'),
 ]
 
 QUESTIONS = [
@@ -401,7 +394,7 @@ def score_gift(g, p, strict=3):
     return s, why
 
 
-EXPERIENCE_IDS = {'cookclass', 'daytrip', 'dinner', 'getaway'}
+EXPERIENCE_IDS = {'daytrip', 'dinner', 'getaway'}
 
 
 def recommend(profile, limit=10):
