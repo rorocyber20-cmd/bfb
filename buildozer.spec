@@ -16,6 +16,11 @@ fullscreen = 0
 
 services = reminder:service.py:foreground
 
+# الأيقونة وشاشة التحميل
+icon.filename = icon.png
+presplash.filename = presplash.png
+android.presplash_color = #3919CB
+
 # Android
 android.api = 33
 android.minapi = 21
