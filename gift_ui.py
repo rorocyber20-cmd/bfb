@@ -20,9 +20,16 @@ try:
     import arabic_reshaper
     from bidi.algorithm import get_display
 
+    # خط Cairo المرفق ينقصه الشكل المنفصل (isolated) للحروف، فنستعمل الحرف الأصلي بدله
+    try:
+        _reshape = arabic_reshaper.ArabicReshaper(
+            configuration={'use_unshaped_instead_of_isolated': True}).reshape
+    except Exception:
+        _reshape = arabic_reshaper.reshape
+
     def fix_arabic(text):
         try:
-            return get_display(arabic_reshaper.reshape(text))
+            return get_display(_reshape(text))
         except Exception:
             return text
 except Exception:
