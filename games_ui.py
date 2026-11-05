@@ -18,6 +18,32 @@ from kivy.uix.screenmanager import Screen
 import core
 import game_data as gd
 
+# الألعاب الإضافية: إن فشل تحميل إحداها تبقى بقية الألعاب تعمل
+try:
+    from game_party import PartyMixin
+    PARTY_OK = True
+except Exception:
+    core.log(traceback.format_exc())
+    PARTY_OK = False
+
+    class PartyMixin:
+        def party_init(self):
+            pass
+
+try:
+    from game_tools import ToolsMixin
+    TOOLS_OK = True
+except Exception:
+    core.log(traceback.format_exc())
+    TOOLS_OK = False
+
+    class ToolsMixin:
+        def tools_init(self):
+            pass
+
+        def stop_anim(self):
+            pass
+
 try:
     import arabic_reshaper
     from bidi.algorithm import get_display
@@ -51,6 +77,15 @@ S = {
     'choose': ('Choose a game', 'اختر لعبة'),
     'soon': ('More games are coming soon...', 'المزيد من الألعاب قريبًا...'),
     'play': ('Play', 'العب'),
+    'td_title': ('Truth or Dare', 'صراحة وتحدي'),
+    'td_desc': ('Pass the phone around: pick truth or dare and let the fun begin.',
+                'مرّروا الهاتف بين الأصدقاء، اختر صراحة أو تحدي وابدأ المرح.'),
+    'ml_title': ('Who is most likely to...?', 'من الأقرب إليك؟'),
+    'ml_desc': ('Everyone votes in secret on funny questions about the group.',
+                'يصوّت الجميع سرًّا على أسئلة طريفة عن أفراد المجموعة.'),
+    'tl_title': ('Decision tools', 'أدوات القرار'),
+    'tl_desc': ('Random picker, dice and coin flip: who pays? where do we eat?',
+                'اختيار عشوائي ونرد وقطعة نقود: من يدفع؟ أين نأكل؟'),
     'k_title': ('Who knows me best?', 'من يعرفني أكثر؟'),
     'k_desc': ('Answer 10 questions about yourself, send the code to a friend, and see how many they guess right.',
                'أجب عن 10 أسئلة عن نفسك، وأرسل الكود إلى صديقك لترى كم إجابة سيخمّنها صحيحة.'),
@@ -99,6 +134,10 @@ S = {
 
 # قائمة الألعاب: (المعرّف، العنوان، الوصف). لإضافة لعبة جديدة أضف سطرًا هنا وفرعًا في open_game.
 GAMES = [('knowme', 'k_title', 'k_desc')]
+if PARTY_OK:
+    GAMES += [('truthdare', 'td_title', 'td_desc'), ('likely', 'ml_title', 'ml_desc')]
+if TOOLS_OK:
+    GAMES += [('tools', 'tl_title', 'tl_desc')]
 
 
 def share_text(text):
@@ -119,7 +158,7 @@ def share_text(text):
     PythonActivity.mActivity.startActivity(chooser)
 
 
-class GamesScreen(Screen):
+class GamesScreen(PartyMixin, ToolsMixin, Screen):
     title_text = StringProperty('')
     lang_label = StringProperty('')
 
@@ -139,6 +178,10 @@ class GamesScreen(Screen):
         self.qi = 0
         self._name_ti = None
         self._code_ti = None
+        self.form = {}
+        self._tis = {}
+        self.party_init()
+        self.tools_init()
 
     # ---------- دورة الحياة ----------
     def on_kv_post(self, base_widget):
@@ -215,7 +258,7 @@ class GamesScreen(Screen):
         btn.bind(on_release=lambda *a: on_release())
         return btn
 
-    def entry(self, hint, text='', multiline=False, height=None):
+    def entry(self, hint, text='', multiline=False, height=None, key=None):
         app = App.get_running_app()
         box = BoxLayout(size_hint_y=None, height=height or dp(app.btn_height))
         with box.canvas.before:
@@ -223,22 +266,34 @@ class GamesScreen(Screen):
             rect = RoundedRectangle(pos=box.pos, size=box.size, radius=[dp(app.radius)])
         box.bind(pos=lambda i, v: setattr(rect, 'pos', i.pos),
                  size=lambda i, v: setattr(rect, 'size', i.size))
+        if key:
+            text = self.form.get(key, text)
         ti = Factory.CustomTextInput(hint_text=hint, text=text, multiline=multiline)
+        if key:
+            self._tis[key] = ti
         box.add_widget(ti)
         return box, ti
 
     # ---------- العرض ----------
-    def capture(self):
-        """يحفظ ما كتبه المستخدم قبل إعادة بناء الشاشة."""
+    def snapshot(self):
+        """يقرأ ما كتبه المستخدم دون مسح الحقول."""
         try:
             if self._name_ti is not None:
                 self.host_name = self._name_ti.text
             if self._code_ti is not None:
                 self.code_text = self._code_ti.text
+            for k, ti in self._tis.items():
+                self.form[k] = ti.text
         except Exception:
             pass
+
+    def capture(self):
+        """يحفظ ما كتبه المستخدم قبل إعادة بناء الشاشة."""
+        self.stop_anim()
+        self.snapshot()
         self._name_ti = None
         self._code_ti = None
+        self._tis = {}
 
     def render(self):
         if 'content' not in self.ids:
@@ -289,6 +344,12 @@ class GamesScreen(Screen):
     def open_game(self, gid):
         if gid == 'knowme':
             self.go('home')
+        elif gid == 'truthdare':
+            self.go('td_setup')
+        elif gid == 'likely':
+            self.go('ml_setup')
+        elif gid == 'tools':
+            self.go('tools_menu')
 
     # ---------- من يعرفني أكثر: الصفحة الأولى ----------
     def show_home(self, box):
