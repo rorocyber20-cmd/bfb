@@ -125,8 +125,10 @@
             color: app.primary_color
             size_hint_y: None
             height: root.height * 0.26
+            text_size: self.size
+            padding: [0, 0, 0, dp(14)]
             halign: 'center'
-            valign: 'middle'
+            valign: 'bottom'
         InputBox:
             CustomTextInput:
                 id: name_input
