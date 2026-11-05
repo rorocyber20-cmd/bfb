@@ -150,8 +150,30 @@ except Exception:
             self.ids.content.add_widget(lbl)
 
 
-class GamesScreen(Screen):
-    pass
+try:
+    from games_ui import GamesScreen
+except Exception:
+    GAMES_ERROR = traceback.format_exc()
+    if core is not None:
+        core.log(GAMES_ERROR)
+    from kivy.uix.label import Label as _GLabel
+
+    class GamesScreen(Screen):
+        title_text = StringProperty('Games tab failed to load')
+        lang_label = StringProperty('')
+
+        def toggle_lang(self):
+            pass
+
+        def on_kv_post(self, base_widget):
+            Clock.schedule_once(self._show_error, 0.3)
+
+        def _show_error(self, dt):
+            lbl = _GLabel(text=GAMES_ERROR, font_size='11sp', size_hint_y=None,
+                          halign='left', valign='top')
+            lbl.bind(width=lambda i, w: setattr(i, 'text_size', (w, None)))
+            lbl.bind(texture_size=lambda i, s: setattr(i, 'height', s[1] + 20))
+            self.ids.content.add_widget(lbl)
 
 
 class SettingsScreen(Screen):
