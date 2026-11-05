@@ -89,6 +89,10 @@ class GiftScreen(Screen):
         Clock.schedule_once(lambda dt: self.render(), 0.2)
 
     def on_pre_enter(self, *args):
+        prefs = core._read(PREFS_FILE, {})
+        lang = prefs.get('lang') if isinstance(prefs, dict) else None
+        if lang in ('en', 'ar'):
+            self.lang = lang
         self.render()
 
     # ---------- مساعدات النص ----------
