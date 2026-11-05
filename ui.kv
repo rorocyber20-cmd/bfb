@@ -204,18 +204,38 @@
 <GamesScreen>:
     BoxLayout:
         orientation: 'vertical'
-        padding: dp(24)
+        padding: dp(16)
         spacing: dp(10)
-        Label:
-            text: 'Games'
-            font_name: app.font
-            font_size: sp(24) * app.font_scale
-            bold: True
-            color: app.primary_color
-        Label:
-            text: 'Coming soon'
-            font_name: app.font
-            color: app.muted_color
+        BoxLayout:
+            size_hint_y: None
+            height: dp(46)
+            spacing: dp(10)
+            Label:
+                text: root.title_text
+                font_name: app.font
+                font_size: sp(22) * app.font_scale
+                bold: True
+                color: app.primary_color
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
+            StyledButton:
+                text: root.lang_label
+                size_hint_x: None
+                width: dp(92)
+                height: dp(40)
+                pos_hint: {'center_y': 0.5}
+                on_press: root.toggle_lang()
+        ScrollView:
+            id: scroll
+            do_scroll_x: False
+            BoxLayout:
+                id: content
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: dp(10)
+                padding: [0, dp(4)]
 
 <SettingsScreen>:
     ScrollView:
