@@ -30,6 +30,20 @@ except Exception:
         def party_init(self):
             pass
 
+def _safe_import(modname, clsname, init_names):
+    try:
+        mod = __import__(modname)
+        return getattr(mod, clsname), True
+    except Exception:
+        core.log(traceback.format_exc())
+        ns = {n: (lambda self: None) for n in init_names}
+        return type(clsname, (), ns), False
+
+
+LieMixin, LIE_OK = _safe_import('game_lie', 'LieMixin', ['lie_init'])
+ImpostorMixin, IMP_OK = _safe_import('game_impostor', 'ImpostorMixin', ['imp_init'])
+BrainMixin, BRAIN_OK = _safe_import('game_brain', 'BrainMixin', ['brain_init'])
+
 try:
     from game_tools import ToolsMixin
     TOOLS_OK = True
@@ -65,6 +79,7 @@ except Exception:
         return text
 
 
+HOSTED_FILE = os.path.join(core.data_dir(), 'knowme_hosted.json')
 PREFS_FILE = os.path.join(core.data_dir(), 'gift_prefs.json')   # اللغة مشتركة مع تبويب الهدايا
 GRAY = [0.45, 0.47, 0.52, 1]
 GREEN = [0.15, 0.62, 0.30, 1]
@@ -80,12 +95,51 @@ S = {
     'td_title': ('Truth or Dare', 'صراحة وتحدي'),
     'td_desc': ('Pass the phone around: pick truth or dare and let the fun begin.',
                 'مرّروا الهاتف بين الأصدقاء، اختر صراحة أو تحدي وابدأ المرح.'),
-    'ml_title': ('Who is most likely to...?', 'من الأقرب إليك؟'),
-    'ml_desc': ('Everyone votes in secret on funny questions about the group.',
-                'يصوّت الجميع سرًّا على أسئلة طريفة عن أفراد المجموعة.'),
+    'ml_title': ('Who is most likely to...', 'من الأكثر احتمالًا أن ...'),
+    'ml_desc': ('3 or more players vote in secret on funny questions about the group.',
+                'من 3 لاعبين فأكثر يصوّتون سرًّا على أسئلة طريفة عن أفراد المجموعة.'),
     'tl_title': ('Decision tools', 'أدوات القرار'),
-    'tl_desc': ('Random picker, dice and coin flip: who pays? where do we eat?',
-                'اختيار عشوائي ونرد وقطعة نقود: من يدفع؟ أين نأكل؟'),
+    'tl_desc': ('Random picker, wheel and coin flip: who pays? where do we eat?',
+                'اختيار عشوائي وعجلة وقطعة نقود: من يدفع؟ أين نأكل؟'),
+    'my_quizzes': ('Results', 'نتائج'),
+    'results_title': ('Results', 'النتائج'),
+    'added_n': ('Added {n} result(s).', 'تمت إضافة {n} نتيجة.'),
+    'no_quizzes': ('You have not created a quiz yet.', 'لم تنشئ أي اختبار بعد.'),
+    'quiz_line': ('Quiz {i}  -  {n} friend(s) answered', 'الاختبار {i}  -  أجاب {n} من الأصدقاء'),
+    'view': ('View results', 'عرض النتائج'),
+    'view_res': ('Results', 'نتائج'),
+    'res_head': ('Friends who answered your quiz', 'الأصدقاء الذين أجابوا عن اختبارك'),
+    'res_hint': ('Ask each friend to send you their result code. Copy it and open this page: it is added automatically. You can also paste it here.',
+                 'اطلب من كل صديق أن يرسل لك كود نتيجته. انسخه وافتح هذه الصفحة وسيُضاف تلقائيًا، أو الصقه هنا.'),
+    'res_ph': ('BFBR-XXXXX-XXXXX-...', 'BFBR-XXXXX-XXXXX-...'),
+    'add_res': ('Add result', 'إضافة النتيجة'),
+    'bad_result': ('This is not a valid result code. Check that you copied all of it.',
+                   'هذا ليس كود نتيجة صالحًا. تأكد أنك نسخته كاملًا.'),
+    'wrong_quiz': ('This result belongs to a different quiz.', 'هذه النتيجة تخص اختبارًا آخر.'),
+    'added': ('Added: {name} got {s} / {n}', 'تمت الإضافة: {name} حصل على {s} / {n}'),
+    'no_res': ('No results yet.', 'لا توجد نتائج بعد.'),
+    'rank_line': ('{i}. {name}  -  {s} / {n}', '{i}. {name}  -  {s} / {n}'),
+    'your_name_head': ('What is your name?', 'ما اسمك؟'),
+    'your_name_hint': ('So {name} knows who answered.', 'ليعرف {name} من الذي أجاب.'),
+    'send_res': ('Send this result code to {name} so they can see your score:',
+                 'أرسل كود النتيجة هذا إلى {name} ليرى نتيجتك:'),
+    'copy_res': ('Copy result code', 'نسخ كود النتيجة'),
+    'share_res': ('Share result', 'مشاركة النتيجة'),
+    'res_share_en': ('Here is my result in "Who knows me best?". In the BFB app open Games > Who knows me best? > '
+                     'My quizzes and results, and paste this code:',
+                     ''),
+    'res_share_ar': ('', 'هذه نتيجتي في لعبة «من يعرفني أكثر؟». في تطبيق BFB افتح الألعاب ثم من يعرفني أكثر؟ '
+                         'ثم اختباراتي والنتائج، والصق هذا الكود:'),
+    'lie_title': ('Two Truths and a Lie', 'الكذبة والحقيقة'),
+    'lie_desc': ('Write 2 truths and 1 lie about yourself; your friend finds the lie.',
+                 'اكتب حقيقتين وكذبة عن نفسك، وصديقك يكتشف الكذبة.'),
+    'imp_title': ('The Impostor', 'المحتال'),
+    'imp_desc': ('One player has a different word. Pass the phone and find the impostor.',
+                 'لاعب واحد يملك كلمة مختلفة. مرّروا الهاتف واكتشفوا المحتال.'),
+    'tv_title': ('General Knowledge', 'ثقافة عامة'),
+    'tv_desc': ('10 questions and a best score to beat.', '10 أسئلة ورقم قياسي لتتجاوزه.'),
+    'rd_title': ('Riddles', 'ألغاز'),
+    'rd_desc': ('Brain teasers with hints and answers.', 'ألغاز للتفكير مع تلميحات وأجوبة.'),
     'k_title': ('Who knows me best?', 'من يعرفني أكثر؟'),
     'k_desc': ('Answer 10 questions about yourself, send the code to a friend, and see how many they guess right.',
                'أجب عن 10 أسئلة عن نفسك، وأرسل الكود إلى صديقك لترى كم إجابة سيخمّنها صحيحة.'),
@@ -136,6 +190,12 @@ S = {
 GAMES = [('knowme', 'k_title', 'k_desc')]
 if PARTY_OK:
     GAMES += [('truthdare', 'td_title', 'td_desc'), ('likely', 'ml_title', 'ml_desc')]
+if LIE_OK:
+    GAMES += [('lie', 'lie_title', 'lie_desc')]
+if IMP_OK:
+    GAMES += [('impostor', 'imp_title', 'imp_desc')]
+if BRAIN_OK:
+    GAMES += [('trivia', 'tv_title', 'tv_desc'), ('riddles', 'rd_title', 'rd_desc')]
 if TOOLS_OK:
     GAMES += [('tools', 'tl_title', 'tl_desc')]
 
@@ -158,7 +218,7 @@ def share_text(text):
     PythonActivity.mActivity.startActivity(chooser)
 
 
-class GamesScreen(PartyMixin, ToolsMixin, Screen):
+class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, ToolsMixin, Screen):
     title_text = StringProperty('')
     lang_label = StringProperty('')
 
@@ -174,6 +234,10 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
         self.code = ''
         self.code_text = ''
         self.guest = None
+        self.guest_name = ''
+        self.result_code = ''
+        self.sel_id = None
+        self.last_clip = ''
         self.guest_answers = []
         self.qi = 0
         self._name_ti = None
@@ -181,6 +245,9 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
         self.form = {}
         self._tis = {}
         self.party_init()
+        self.lie_init()
+        self.imp_init()
+        self.brain_init()
         self.tools_init()
 
     # ---------- دورة الحياة ----------
@@ -225,6 +292,39 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
         if cur:
             lines.append(cur)
         return '\n'.join(fix_arabic(l) for l in lines)
+
+    def tt(self, table, key, fs=16, pad=60, **fmt):
+        en, ar = table[key]
+        return self.pair(en, ar, fs, pad, **fmt)
+
+    def wrap_user(self, text, fs=16, pad=100):
+        """نص كتبه المستخدم (قد يكون عربيًا أو إنجليزيًا): يُقسَّم لأسطر ويُشكَّل العربي منه."""
+        width_dp = Window.width / dp(1)
+        max_chars = max(12, int((width_dp - pad) / (fs * 0.55)))
+        lines, cur = [], ''
+        for w in (text or '').split():
+            if cur and len(cur) + 1 + len(w) > max_chars:
+                lines.append(cur)
+                cur = w
+            else:
+                cur = (cur + ' ' + w) if cur else w
+        if cur:
+            lines.append(cur)
+        return '\n'.join(fix_arabic(l) if HAS_ARABIC.search(l) else l for l in lines)
+
+    def do_copy(self, text):
+        try:
+            from kivy.core.clipboard import Clipboard
+            Clipboard.copy(text)
+            self.set_status(self.tx('copied', 13, 60), ok=True)
+        except Exception as e:
+            self.set_status(f"Error: {e}")
+
+    def do_share(self, text):
+        try:
+            share_text(text)
+        except Exception as e:
+            self.set_status(f"{e}")
 
     def disp_name(self, name):
         """اسم الصديق: في الواجهة الإنجليزية نشكّله بنفسنا، وفي العربية يشكّله shape()."""
@@ -318,6 +418,11 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
         self.capture()
         self.stage = stage
         self.status = ''
+        self.status_ok = False
+        if stage == 'host_list':
+            msg = self.auto_clipboard()
+            if msg:
+                self.status, self.status_ok = msg, True
         self.render()
 
     def set_status(self, text, ok=False):
@@ -350,6 +455,14 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
             self.go('ml_setup')
         elif gid == 'tools':
             self.go('tools_menu')
+        elif gid == 'lie':
+            self.go('lie_home')
+        elif gid == 'impostor':
+            self.go('imp_setup')
+        elif gid == 'trivia':
+            self.go('tv_home')
+        elif gid == 'riddles':
+            self.go('rd_home')
 
     # ---------- من يعرفني أكثر: الصفحة الأولى ----------
     def show_home(self, box):
@@ -360,6 +473,7 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
         box.add_widget(self.button(self.tx('create', 16, 100), self.start_host))
         box.add_widget(self.button(self.tx('have_code', 16, 100),
                                    lambda: self.go('guest_code')))
+        box.add_widget(self.button(self.tx('my_quizzes', 16, 100), lambda: self.go('host_list')))
         box.add_widget(self.button(self.tx('menu', 15, 100), lambda: self.go('menu'), gray=True))
 
     # ---------- المضيف: الاسم ثم الأسئلة ثم الكود ----------
@@ -414,6 +528,7 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
         else:
             qa = list(zip(self.host_qids, self.host_answers))
             self.code = gd.encode(self.host_name, qa)
+            self.save_hosted(qa)
             self.go('host_done')
 
     def host_back(self):
@@ -434,6 +549,7 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
         box.add_widget(card)
         box.add_widget(self.button(self.tx('copy', 16, 100), self.copy_code))
         box.add_widget(self.button(self.tx('share', 16, 100), self.share_code))
+        box.add_widget(self.button(self.tx('view_res', 16, 100), lambda: self.go('host_list')))
         box.add_widget(self.button(self.tx('newquiz', 15, 100), self.start_host, gray=True))
         box.add_widget(self.button(self.tx('menu', 15, 100), lambda: self.go('menu'), gray=True))
 
@@ -484,6 +600,28 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
             return
         self.guest_answers = []
         self.qi = 0
+        self.go('guest_name')
+
+    def show_guest_name(self, box):
+        app = App.get_running_app()
+        box.add_widget(self.label(self.tx('your_name_head', 20, 60), fs=20, bold=True,
+                                  color=app.primary_color))
+        box.add_widget(self.label(self.tx('your_name_hint', 14, 60,
+                                          name=self.disp_name(self.guest['name'])),
+                                  fs=14, color=app.muted_color))
+        row, _ = self.entry(self.tx('name_ph', 16, 100), key='guest_name')
+        box.add_widget(row)
+        box.add_widget(self.button(self.tx('cont', 16, 100), self.begin_guest_quiz))
+        box.add_widget(self.button(self.tx('back', 15, 100), lambda: self.go('guest_code'),
+                                   gray=True))
+
+    def begin_guest_quiz(self):
+        self.snapshot()
+        name = (self.form.get('guest_name') or '').strip()
+        if not name:
+            self.set_status(self.tx('empty_name', 13, 60))
+            return
+        self.guest_name = name
         self.go('guest_quiz')
 
     def show_guest_quiz(self, box):
@@ -526,6 +664,18 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
         box.add_widget(self.label(f"{s} / {n}", fs=40, bold=True, color=app.primary_color))
         box.add_widget(self.label(self.tx(key, 17, 60, name=name), fs=17, bold=True))
 
+        try:
+            self.result_code = gd.encode_result(gd.quiz_id(qa), self.guest_name, self.guest_answers)
+            box.add_widget(self.label(self.tx('send_res', 14, 60, name=name), fs=14,
+                                      color=app.muted_color))
+            card = Factory.GiftCard()
+            card.add_widget(self.label(self.result_code, fs=14, bold=True))
+            box.add_widget(card)
+            box.add_widget(self.button(self.tx('copy_res', 15, 100), self.copy_result))
+            box.add_widget(self.button(self.tx('share_res', 15, 100), self.share_result))
+        except Exception as e:
+            core.log(f"result code: {e}")
+
         halign = 'right' if self.is_ar() else 'left'
         for (qid, correct), guess in zip(qa, self.guest_answers):
             q_en, q_ar, _ = gd.POOL[qid]
@@ -545,6 +695,136 @@ class GamesScreen(PartyMixin, ToolsMixin, Screen):
             box.add_widget(card)
         box.add_widget(self.button(self.tx('again', 15, 100), lambda: self.go('guest_code')))
         box.add_widget(self.button(self.tx('menu', 15, 100), lambda: self.go('menu'), gray=True))
+
+    def copy_result(self):
+        try:
+            from kivy.core.clipboard import Clipboard
+            Clipboard.copy(self.result_code)
+            self.set_status(self.tx('copied', 13, 60), ok=True)
+        except Exception as e:
+            self.set_status(f"Error: {e}")
+
+    def share_result(self):
+        text = f"\U0001F382 {S['res_share_en'][0]}\n{S['res_share_ar'][1]}\n\n{self.result_code}"
+        try:
+            share_text(text)
+        except Exception as e:
+            self.set_status(f"{e}")
+
+    # ---------- المضيف: اختباراتي ونتائج الأصدقاء ----------
+    def load_hosted(self):
+        data = core._read(HOSTED_FILE, [])
+        return data if isinstance(data, list) else []
+
+    def save_hosted_list(self, items):
+        try:
+            core._write(HOSTED_FILE, items[-20:])
+        except Exception as e:
+            core.log(f"hosted save: {e}")
+
+    def save_hosted(self, qa):
+        qid = gd.quiz_id(qa)
+        self.sel_id = qid
+        items = self.load_hosted()
+        if any(q.get('id') == qid for q in items):
+            return
+        items.append({'id': qid, 'name': self.host_name,
+                      'qa': [[a, b] for a, b in qa], 'results': {}})
+        self.save_hosted_list(items)
+
+    def find_quiz(self, qid):
+        for q in self.load_hosted():
+            if q.get('id') == qid:
+                return q
+        return None
+
+    def show_host_list(self, box):
+        """قسم «نتائج»: يضم كل اختباراتك وترتيب الأصدقاء فيها."""
+        app = App.get_running_app()
+        box.add_widget(self.label(self.tx('results_title', 22, 60), fs=22, bold=True,
+                                  color=app.primary_color))
+        box.add_widget(self.label(self.tx('res_hint', 14, 60), fs=14, color=app.muted_color))
+        row, _ = self.entry(self.tx('res_ph', 14, 100), multiline=True, height=dp(100),
+                            key='res_code')
+        box.add_widget(row)
+        box.add_widget(self.button(self.tx('paste', 15, 100), lambda: self.paste_into('res_code'),
+                                   gray=True))
+        box.add_widget(self.button(self.tx('add_res', 16, 100), self.add_result))
+        items = self.load_hosted()
+        if not items:
+            box.add_widget(self.label(self.tx('no_quizzes', 15, 60), fs=15, color=app.muted_color))
+        for i, q in reversed(list(enumerate(items, 1))):
+            n = len(q['qa'])
+            card = Factory.GiftCard()
+            card.add_widget(self.label(self.tx('quiz_line', 16, 90, i=i, n=len(q.get('results', {}))),
+                                       fs=16, bold=True, color=app.primary_color))
+            rows = sorted(q.get('results', {}).values(), key=lambda r: -r[1])
+            if not rows:
+                card.add_widget(self.label(self.tx('no_res', 14, 90), fs=14, color=app.muted_color))
+            for k, (nm, sc) in enumerate(rows, 1):
+                card.add_widget(self.label(
+                    self.tx('rank_line', 17, 90, i=k, name=self.disp_name(nm), s=sc, n=n),
+                    fs=17, bold=(k == 1)))
+            box.add_widget(card)
+        box.add_widget(self.button(self.tx('back', 15, 100), lambda: self.go('home'), gray=True))
+
+    def paste_into(self, key):
+        try:
+            from kivy.core.clipboard import Clipboard
+            text = Clipboard.paste() or ''
+        except Exception as e:
+            self.set_status(f"Error: {e}")
+            return
+        self.form[key] = text
+        if key in self._tis:
+            self._tis[key].text = text
+
+    def import_results(self, text):
+        """يضيف كل النتائج في النص إلى الاختبارات المناسبة. يرجع (المضاف، غير المعروف)."""
+        found = gd.decode_all_results(text)
+        if not found:
+            return 0, 0
+        items = self.load_hosted()
+        added = unknown = 0
+        for r in found:
+            q = next((x for x in items if x.get('id') == r['quiz_id']), None)
+            if q is None:
+                unknown += 1
+                continue
+            sc = gd.score(q['qa'], r['answers'])
+            name = r['name'].strip() or '?'
+            q.setdefault('results', {})[name.lower()] = [name, sc]
+            added += 1
+        if added:
+            self.save_hosted_list(items)
+        return added, unknown
+
+    def auto_clipboard(self):
+        """عند فتح قسم النتائج: إن كان الكود منسوخًا فيُضاف تلقائيًا."""
+        try:
+            from kivy.core.clipboard import Clipboard
+            text = Clipboard.paste() or ''
+        except Exception:
+            return ''
+        if 'BFBR' not in text.upper() or text == self.last_clip:
+            return ''
+        self.last_clip = text
+        added, _ = self.import_results(text)
+        return self.tx('added_n', 13, 60, n=added) if added else ''
+
+    def add_result(self):
+        self.snapshot()
+        text = self.form.get('res_code', '')
+        added, unknown = self.import_results(text)
+        if added:
+            self.form['res_code'] = ''
+            if 'res_code' in self._tis:
+                self._tis['res_code'].text = ''
+            self.set_status(self.tx('added_n', 13, 60, n=added), ok=True)
+        elif unknown:
+            self.set_status(self.tx('wrong_quiz', 13, 60))
+        else:
+            self.set_status(self.tx('bad_result', 13, 60))
 
     # ---------- اللغة ----------
     def toggle_lang(self):
