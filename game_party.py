@@ -18,7 +18,7 @@ PT = {
     'bold': ('Bold', 'جريء'),
     'names_hint': ("Players' names, separated by commas (optional)",
                    'أسماء اللاعبين مفصولة بفواصل (اختياري)'),
-    'names_ph': ('rayane, bayane, hala', 'ريان، بيان، هالة'),
+    'names_ph': ('Rayan, hala, Bayan', 'ريان ، هالة ، بيان'),
     'start': ('Start', 'ابدأ'),
     'turn': ("{name}'s turn", 'دور {name}'),
     'pick': ('Truth or Dare?', 'صراحة أم تحدي؟'),
@@ -27,10 +27,11 @@ PT = {
     'another': ('Another one', 'واحد آخر'),
     'next_p': ('Next player', 'اللاعب التالي'),
     'next_t': ('Next turn', 'الدور التالي'),
-    'ml_head': ('Who is most likely to...?', 'من الأقرب إليك؟'),
-    'ml_names': ('Enter 2 to 8 player names, separated by commas.',
-                 'أدخل من 2 إلى 8 أسماء لاعبين مفصولة بفواصل.'),
-    'ml_need': ('Please enter at least 2 different names.', 'الرجاء إدخال اسمين مختلفين على الأقل.'),
+    'ml_head': ('Who is most likely to...', 'من الأكثر احتمالًا أن ...'),
+    'ml_names': ('Enter 3 to 8 player names, separated by commas.',
+                 'أدخل من 3 إلى 8 أسماء لاعبين مفصولة بفواصل.'),
+    'ml_need': ('At least 3 players are needed. Please enter 3 different names or more.',
+                 'يلزم 3 لاعبين على الأقل. الرجاء إدخال 3 أسماء مختلفة أو أكثر.'),
     'ml_pass': ('Pass the phone to {name}', 'مرّر الهاتف إلى {name}'),
     'ml_vote': ('Vote for the person you think fits best:', 'صوّت لمن تظنه الأنسب:'),
     'ml_winner': ('Most votes: {names}', 'الأكثر أصواتًا: {names}'),
@@ -165,7 +166,7 @@ class PartyMixin:
     def ml_start(self):
         self.snapshot()
         names = parse_names(self.form.get('ml_names', ''))
-        if len(names) < 2:
+        if len(names) < 3:
             self.set_status(self.tt(PT, 'ml_need', 13))
             return
         self.ml_players = names
