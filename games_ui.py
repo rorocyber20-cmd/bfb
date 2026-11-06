@@ -43,6 +43,8 @@ def _safe_import(modname, clsname, init_names):
 LieMixin, LIE_OK = _safe_import('game_lie', 'LieMixin', ['lie_init'])
 ImpostorMixin, IMP_OK = _safe_import('game_impostor', 'ImpostorMixin', ['imp_init'])
 BrainMixin, BRAIN_OK = _safe_import('game_brain', 'BrainMixin', ['brain_init'])
+FakeTimerMixin, FAKE_OK = _safe_import('game_fake', 'FakeTimerMixin', ['ft_init'])
+SurvivorMixin, SURV_OK = _safe_import('game_survivor', 'SurvivorMixin', ['ls_init'])
 
 try:
     from game_tools import ToolsMixin
@@ -79,6 +81,7 @@ except Exception:
         return text
 
 
+PLAYED_FILE = os.path.join(core.data_dir(), 'played_codes.json')
 HOSTED_FILE = os.path.join(core.data_dir(), 'knowme_hosted.json')
 PREFS_FILE = os.path.join(core.data_dir(), 'gift_prefs.json')   # اللغة مشتركة مع تبويب الهدايا
 GRAY = [0.45, 0.47, 0.52, 1]
@@ -140,6 +143,22 @@ S = {
     'tv_desc': ('10 questions and a best score to beat.', '10 أسئلة ورقم قياسي لتتجاوزه.'),
     'rd_title': ('Riddles', 'ألغاز'),
     'rd_desc': ('Brain teasers with hints and answers.', 'ألغاز للتفكير مع تلميحات وأجوبة.'),
+    'played': ('You already played this challenge. Ask your friend for a new one.',
+               'لعبت هذا التحدي من قبل. اطلب من صديقك تحديًا جديدًا.'),
+    'cat_friends': ('Friends Games', 'ألعاب الأصدقاء'),
+    'cat_friends_d': ('Play with friends: by sending a code or passing one phone.',
+                      'العبوها مع أصدقائكم: بإرسال كود أو بتمرير هاتف واحد.'),
+    'cat_quick': ('Quick Games', 'ألعاب سريعة'),
+    'cat_quick_d': ('Short and fast games, a minute or two each.', 'ألعاب قصيرة وسريعة، دقيقة أو دقيقتان لكل جولة.'),
+    'cat_brain': ('Brain Games', 'ألعاب العقل'),
+    'cat_brain_d': ('Questions and riddles, solo or as a group.', 'أسئلة وألغاز، فردية أو جماعية.'),
+    'cat_tools': ('Tools', 'أدوات'),
+    'cat_tools_d': ('Wheel, random picker and coin flip.', 'عجلة واختيار عشوائي وقطعة نقود.'),
+    'choose_cat': ('Choose a category', 'اختر صنفًا'),
+    'all_cats': ('All categories', 'كل الأصناف'),
+    'ft_title': ('Fake Timer', 'المؤقت المخادع'),
+    'ft_desc': ('Fake signals try to trick you. Press only on the GREEN GO!',
+                'إشارات مزيفة تحاول خداعك. اضغط فقط عند انطلق! الخضراء.'),
     'k_title': ('Who knows me best?', 'من يعرفني أكثر؟'),
     'k_desc': ('Answer 10 questions about yourself, send the code to a friend, and see how many they guess right.',
                'أجب عن 10 أسئلة عن نفسك، وأرسل الكود إلى صديقك لترى كم إجابة سيخمّنها صحيحة.'),
@@ -187,17 +206,27 @@ S = {
 }
 
 # قائمة الألعاب: (المعرّف، العنوان، الوصف). لإضافة لعبة جديدة أضف سطرًا هنا وفرعًا في open_game.
-GAMES = [('knowme', 'k_title', 'k_desc')]
-if PARTY_OK:
-    GAMES += [('truthdare', 'td_title', 'td_desc'), ('likely', 'ml_title', 'ml_desc')]
+# الأصناف: (المعرّف، عنوانها، وصفها)
+CATS = [('friends', 'cat_friends', 'cat_friends_d'),
+        ('quick', 'cat_quick', 'cat_quick_d'),
+        ('brain', 'cat_brain', 'cat_brain_d'),
+        ('tools', 'cat_tools', 'cat_tools_d')]
+
+# الألعاب: (المعرّف، العنوان، الوصف، الصنف). لإضافة لعبة جديدة: أضف سطرًا هنا وفرعًا في open_game.
+GAMES = [('knowme', 'k_title', 'k_desc', 'friends')]
 if LIE_OK:
-    GAMES += [('lie', 'lie_title', 'lie_desc')]
+    GAMES += [('lie', 'lie_title', 'lie_desc', 'friends')]
+if PARTY_OK:
+    GAMES += [('likely', 'ml_title', 'ml_desc', 'friends'),
+              ('truthdare', 'td_title', 'td_desc', 'friends')]
 if IMP_OK:
-    GAMES += [('impostor', 'imp_title', 'imp_desc')]
+    GAMES += [('impostor', 'imp_title', 'imp_desc', 'friends')]
+if FAKE_OK:
+    GAMES += [('faketimer', 'ft_title', 'ft_desc', 'quick')]
 if BRAIN_OK:
-    GAMES += [('trivia', 'tv_title', 'tv_desc'), ('riddles', 'rd_title', 'rd_desc')]
+    GAMES += [('trivia', 'tv_title', 'tv_desc', 'brain'), ('riddles', 'rd_title', 'rd_desc', 'brain')]
 if TOOLS_OK:
-    GAMES += [('tools', 'tl_title', 'tl_desc')]
+    GAMES += [('tools', 'tl_title', 'tl_desc', 'tools')]
 
 
 def share_text(text):
@@ -218,7 +247,8 @@ def share_text(text):
     PythonActivity.mActivity.startActivity(chooser)
 
 
-class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, ToolsMixin, Screen):
+class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, FakeTimerMixin,
+                  SurvivorMixin, ToolsMixin, Screen):
     title_text = StringProperty('')
     lang_label = StringProperty('')
 
@@ -248,6 +278,9 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, ToolsMixin, S
         self.lie_init()
         self.imp_init()
         self.brain_init()
+        self.ft_init()
+        self.ls_init()
+        self.cat = None
         self.tools_init()
 
     # ---------- دورة الحياة ----------
@@ -326,6 +359,23 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, ToolsMixin, S
         except Exception as e:
             self.set_status(f"{e}")
 
+    def claim_code(self, game, payload):
+        """فرصة واحدة لكل كود تحدٍّ: يرجع False إن سبق لعبه على هذا الهاتف، وإلا يسجّله.
+        يُستعمل في كل لعبة تعتمد على كود يستقبله الصديق (حتى لا يعيد لصقه ليعرف الإجابات)."""
+        import hashlib
+        cid = hashlib.md5(str(payload).upper().replace('-', '').encode()).hexdigest()[:12]
+        data = core._read(PLAYED_FILE, {})
+        data = data if isinstance(data, dict) else {}
+        seen = data.get(game, [])
+        if cid in seen:
+            return False
+        data[game] = (seen + [cid])[-200:]
+        try:
+            core._write(PLAYED_FILE, data)
+        except Exception as e:
+            core.log(f"played codes: {e}")
+        return True
+
     def disp_name(self, name):
         """اسم الصديق: في الواجهة الإنجليزية نشكّله بنفسنا، وفي العربية يشكّله shape()."""
         if not self.is_ar() and HAS_ARABIC.search(name or ''):
@@ -390,6 +440,8 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, ToolsMixin, S
     def capture(self):
         """يحفظ ما كتبه المستخدم قبل إعادة بناء الشاشة."""
         self.stop_anim()
+        for fn in ('ft_stop', 'ls_stop'):
+            getattr(self, fn, lambda: None)()
         self.snapshot()
         self._name_ti = None
         self._code_ti = None
@@ -413,6 +465,8 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, ToolsMixin, S
             box.clear_widgets()
             box.add_widget(self.label(traceback.format_exc(), fs=11, halign='left'))
         self.ids.scroll.scroll_y = 1
+        # في لعبة المؤقت المخادع نمنع التمرير كي لا يتأخر وصول اللمسة للأزرار
+        self.ids.scroll.do_scroll_y = self.stage != 'ft_play'
 
     def go(self, stage):
         self.capture()
@@ -433,10 +487,28 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, ToolsMixin, S
     # ---------- قائمة الألعاب ----------
     def show_menu(self, box):
         app = App.get_running_app()
-        box.add_widget(self.label(self.tx('choose', 20, 60), fs=20, bold=True,
-                                  color=app.primary_color))
         halign = 'right' if self.is_ar() else 'left'
-        for gid, tkey, dkey in GAMES:
+        if self.cat is None:
+            box.add_widget(self.label(self.tx('choose_cat', 20, 60), fs=20, bold=True,
+                                      color=app.primary_color))
+            for cid, tkey, dkey in CATS:
+                if not any(g[3] == cid for g in GAMES):
+                    continue
+                card = Factory.GiftCard()
+                card.add_widget(self.label(self.tx(tkey, 18, 90), fs=18, bold=True, halign=halign))
+                card.add_widget(self.label(self.tx(dkey, 13, 90), fs=13, color=app.muted_color,
+                                           halign=halign))
+                card.add_widget(self.button(self.tx('play', 16, 100),
+                                            lambda c=cid: self.open_cat(c)))
+                box.add_widget(card)
+            box.add_widget(self.label(self.tx('soon', 13, 60), fs=13, color=app.muted_color))
+            return
+        title = next((c[1] for c in CATS if c[0] == self.cat), 'choose')
+        box.add_widget(self.label(self.tx(title, 20, 60), fs=20, bold=True,
+                                  color=app.primary_color))
+        for gid, tkey, dkey, cid in GAMES:
+            if cid != self.cat:
+                continue
             card = Factory.GiftCard()
             card.add_widget(self.label(self.tx(tkey, 18, 90), fs=18, bold=True, halign=halign))
             card.add_widget(self.label(self.tx(dkey, 13, 90), fs=13, color=app.muted_color,
@@ -444,9 +516,15 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, ToolsMixin, S
             card.add_widget(self.button(self.tx('play', 16, 100),
                                         lambda g=gid: self.open_game(g)))
             box.add_widget(card)
-        box.add_widget(self.label(self.tx('soon', 13, 60), fs=13, color=app.muted_color))
+        box.add_widget(self.button(self.tx('all_cats', 15, 100), lambda: self.open_cat(None),
+                                   gray=True))
+
+    def open_cat(self, cid):
+        self.cat = cid
+        self.go('menu')
 
     def open_game(self, gid):
+        self.cat = next((g[3] for g in GAMES if g[0] == gid), self.cat)
         if gid == 'knowme':
             self.go('home')
         elif gid == 'truthdare':
@@ -460,9 +538,11 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, ToolsMixin, S
         elif gid == 'impostor':
             self.go('imp_setup')
         elif gid == 'trivia':
-            self.go('tv_home')
+            self.go('tv_mode' if SURV_OK else 'tv_home')
         elif gid == 'riddles':
-            self.go('rd_home')
+            self.go('rd_mode' if SURV_OK else 'rd_home')
+        elif gid == 'faketimer':
+            self.go('ft_setup')
 
     # ---------- من يعرفني أكثر: الصفحة الأولى ----------
     def show_home(self, box):
@@ -597,6 +677,9 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, ToolsMixin, S
             self.guest = gd.decode(self.code_text)
         except ValueError:
             self.set_status(self.tx('bad_code', 13, 60))
+            return
+        if not self.claim_code('knowme', gd.extract_code(self.code_text)):
+            self.set_status(self.tx('played', 13, 60))
             return
         self.guest_answers = []
         self.qi = 0
