@@ -42,7 +42,7 @@ IT = {
              'تحدثوا عن الكلمة دون ذكرها واكتشفوا المحتال!'),
     'names_hint': ('Enter 3 to 8 player names, separated by commas.',
                    'أدخل من 3 إلى 8 أسماء لاعبين مفصولة بفواصل.'),
-    'names_ph': ('Rayan, Mohamed, Bayan', 'ريان ، محمد ، بيان'),
+    'names_ph': ('Rayan, hala, Bayan', 'ريان ، هالة ، بيان'),
     'need': ('At least 3 players are needed.', 'يلزم 3 لاعبين على الأقل.'),
     'start': ('Start', 'ابدأ'),
     'pass': ('Pass the phone to {name}', 'مرّر الهاتف إلى {name}'),
