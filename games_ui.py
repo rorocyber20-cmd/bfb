@@ -45,6 +45,7 @@ ImpostorMixin, IMP_OK = _safe_import('game_impostor', 'ImpostorMixin', ['imp_ini
 BrainMixin, BRAIN_OK = _safe_import('game_brain', 'BrainMixin', ['brain_init'])
 FakeTimerMixin, FAKE_OK = _safe_import('game_fake', 'FakeTimerMixin', ['ft_init'])
 SurvivorMixin, SURV_OK = _safe_import('game_survivor', 'SurvivorMixin', ['ls_init'])
+BombMixin, BOMB_OK = _safe_import('game_bomb', 'BombMixin', ['bc_init'])
 
 try:
     from game_tools import ToolsMixin
@@ -156,6 +157,9 @@ S = {
     'cat_tools_d': ('Wheel, random picker and coin flip.', 'عجلة واختيار عشوائي وقطعة نقود.'),
     'choose_cat': ('Choose a category', 'اختر صنفًا'),
     'all_cats': ('All categories', 'كل الأصناف'),
+    'bc_title': ('Bomb Code', 'كود القنبلة'),
+    'bc_desc': ('Cut a wire in 5 seconds. One wire blows up the bomb. Last player standing wins.',
+                'اقطع سلكًا في 5 ثوانٍ. سلك واحد يفجّر القنبلة. آخر لاعب يبقى يفوز.'),
     'ft_title': ('Fake Timer', 'المؤقت المخادع'),
     'ft_desc': ('Fake signals try to trick you. Press only on the GREEN GO!',
                 'إشارات مزيفة تحاول خداعك. اضغط فقط عند انطلق! الخضراء.'),
@@ -223,6 +227,8 @@ if IMP_OK:
     GAMES += [('impostor', 'imp_title', 'imp_desc', 'friends')]
 if FAKE_OK:
     GAMES += [('faketimer', 'ft_title', 'ft_desc', 'quick')]
+if BOMB_OK:
+    GAMES += [('bomb', 'bc_title', 'bc_desc', 'quick')]
 if BRAIN_OK:
     GAMES += [('trivia', 'tv_title', 'tv_desc', 'brain'), ('riddles', 'rd_title', 'rd_desc', 'brain')]
 if TOOLS_OK:
@@ -248,7 +254,7 @@ def share_text(text):
 
 
 class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, FakeTimerMixin,
-                  SurvivorMixin, ToolsMixin, Screen):
+                  SurvivorMixin, BombMixin, ToolsMixin, Screen):
     title_text = StringProperty('')
     lang_label = StringProperty('')
 
@@ -280,6 +286,7 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, FakeTimerMixi
         self.brain_init()
         self.ft_init()
         self.ls_init()
+        self.bc_init()
         self.cat = None
         self.tools_init()
 
@@ -440,7 +447,7 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, FakeTimerMixi
     def capture(self):
         """يحفظ ما كتبه المستخدم قبل إعادة بناء الشاشة."""
         self.stop_anim()
-        for fn in ('ft_stop', 'ls_stop'):
+        for fn in ('ft_stop', 'ls_stop', 'bc_stop'):
             getattr(self, fn, lambda: None)()
         self.snapshot()
         self._name_ti = None
@@ -543,6 +550,8 @@ class GamesScreen(PartyMixin, LieMixin, ImpostorMixin, BrainMixin, FakeTimerMixi
             self.go('rd_mode' if SURV_OK else 'rd_home')
         elif gid == 'faketimer':
             self.go('ft_setup')
+        elif gid == 'bomb':
+            self.go('bc_setup')
 
     # ---------- من يعرفني أكثر: الصفحة الأولى ----------
     def show_home(self, box):
