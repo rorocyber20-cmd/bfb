@@ -18,7 +18,7 @@ PT = {
     'bold': ('Bold', 'جريء'),
     'names_hint': ("Players' names, separated by commas (optional)",
                    'أسماء اللاعبين مفصولة بفواصل (اختياري)'),
-    'names_ph': ('Ali, Sara, Omar', 'علي، سارة، عمر'),
+    'names_ph': ('rayane, bayane, hala', 'ريان، بيان، هالة'),
     'start': ('Start', 'ابدأ'),
     'turn': ("{name}'s turn", 'دور {name}'),
     'pick': ('Truth or Dare?', 'صراحة أم تحدي؟'),
