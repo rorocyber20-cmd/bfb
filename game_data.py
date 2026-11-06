@@ -201,3 +201,67 @@ def decode(text):
 def score(correct_qa, guesses):
     """عدد الإجابات الصحيحة. كلاهما قائمة إجابات بنفس ترتيب الأسئلة."""
     return sum(1 for (qid, ans), g in zip(correct_qa, guesses) if ans == g)
+
+
+# ---------------------------------------------------------------
+# كود النتيجة: يرسله الصديق إلى صاحب الاختبار ليرى نتيجته
+# [الإصدار][رقم الاختبار: بايتان][طول الاسم] + 10 إجابات + الاسم + المجموع الاختباري
+# ---------------------------------------------------------------
+RESULT_VERSION = 1
+_RES_RE = re.compile(r'BFBR-([A-Z2-7]{1,5}(?:-[A-Z2-7]{1,5})*)', re.IGNORECASE)
+
+
+def quiz_id(qa):
+    """رقم (16 بت) يميّز اختبارًا عن آخر بحسب أسئلته وإجاباته."""
+    h = 0
+    for qid, ans in qa:
+        h = (h * 131 + qid * 8 + ans + 7) & 0xFFFF
+    return h
+
+
+def encode_result(qid, name, answers):
+    if len(answers) != QUESTIONS_PER_QUIZ or any(not (0 <= a < 8) for a in answers):
+        raise ValueError('bad answers')
+    name_b = _trim_name(name).encode('utf-8')
+    raw = [RESULT_VERSION, qid >> 8, qid & 255, len(name_b)] + list(answers) + list(name_b)
+    raw.append(_checksum(raw))
+    text = base64.b32encode(bytes(raw)).decode('ascii').rstrip('=')
+    return 'BFBR-' + '-'.join(text[i:i + 5] for i in range(0, len(text), 5))
+
+
+def decode_result(text):
+    """يرجع {'quiz_id', 'name', 'answers'} أو يرفع ValueError."""
+    m = _RES_RE.search(text or '')
+    if not m:
+        raise ValueError('no result code')
+    payload = m.group(1).upper().replace('-', '')
+    try:
+        raw = base64.b32decode(payload + '=' * (-len(payload) % 8))
+    except Exception:
+        raise ValueError('bad base32')
+    if len(raw) < 4 + QUESTIONS_PER_QUIZ + 1 or _checksum(list(raw[:-1])) != raw[-1]:
+        raise ValueError('checksum')
+    if raw[0] != RESULT_VERSION:
+        raise ValueError('version')
+    name_len = raw[3]
+    if len(raw) != 4 + QUESTIONS_PER_QUIZ + name_len + 1:
+        raise ValueError('length')
+    answers = list(raw[4:4 + QUESTIONS_PER_QUIZ])
+    if any(a > 7 for a in answers):
+        raise ValueError('bad answers')
+    try:
+        name = bytes(raw[4 + QUESTIONS_PER_QUIZ:-1]).decode('utf-8')
+    except Exception:
+        raise ValueError('bad name')
+    return {'quiz_id': (raw[1] << 8) | raw[2], 'name': name, 'answers': answers}
+
+
+def decode_all_results(text):
+    """كل أكواد النتائج الصالحة داخل نص (قد يحوي عدة رسائل ملصوقة معًا)."""
+    out = []
+    for m in _RES_RE.finditer(text or ''):
+        try:
+            out.append(decode_result(m.group(0)))
+        except ValueError:
+            continue
+    return out
