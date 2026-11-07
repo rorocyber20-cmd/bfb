@@ -29,8 +29,22 @@ jobs:
           libffi-dev libssl-dev build-essential ccache
         pip install --upgrade buildozer "cython<3" setuptools
 
+    - name: Install fixed signing key
+      env:
+        DEBUG_KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+      run: |
+        if [ -z "$DEBUG_KEYSTORE_B64" ]; then
+          echo "::error::Secret DEBUG_KEYSTORE_B64 is missing. Add it in Settings > Secrets and variables > Actions."
+          exit 1
+        fi
+        mkdir -p ~/.android
+        echo "$DEBUG_KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+
     - name: Build APK
       run: yes | buildozer -v android debug
+
+    - name: Show signing fingerprint (safe to share)
+      run: keytool -printcert -jarfile bin/*.apk | grep -i "SHA256" || true
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
