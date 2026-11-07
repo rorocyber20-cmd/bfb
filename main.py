@@ -4,14 +4,17 @@ import traceback
 from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.core.text import Label as CoreLabel
 from kivy.core.text import LabelBase
 from kivy.core.window import Window
 from kivy.lang import Builder
+from kivy.metrics import dp, sp
 from kivy.properties import (BooleanProperty, ListProperty, NumericProperty,
                              ObjectProperty, StringProperty)
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
 from kivy.uix.stencilview import StencilView
@@ -225,6 +228,231 @@ class ConfirmPopup(Popup):
             cb()
 
 
+# ---------------------------------------------------------------
+# نافذة المساعدة (زر i): شرح الألعاب والإعدادات ونصائح، بالعربية والإنجليزية
+# ---------------------------------------------------------------
+HELP_TEXT = {
+    'en': {
+        'title': 'Help',
+        'intro': 'Tap a title to open or close it.',
+        'close': 'Close',
+        'skip': 'Skip',
+        'footer': 'Reopen this window any time with the (i) button.',
+        'sections': [
+            ('games', 'Games', [
+                '10 games, no account needed. Pick a category, then a game.',
+                'Friends games work with codes: you send a code to a friend '
+                '(WhatsApp, SMS...) and they enter it on their phone.',
+                'Codes: BFB- is the Who knows me best game, BFBR- is its '
+                'result, BFBL- is Lie & Truth.',
+                'A received code works only once, so it cannot be pasted '
+                'again to cheat.',
+                'Results of Who knows me best are kept in the Results section.',
+                'Bomb Code: 3 to 8 players, 5 seconds each. When time runs '
+                'out, it explodes!',
+                'Last Survivor: 3 or more players, 15 seconds per question.',
+            ]),
+            ('settings', 'Settings', [
+                'Theme and Accent color change how the whole app looks.',
+                'Corner roundness, Button height and Text size: adjust them '
+                'to your taste.',
+                'Export backup copies all your birthdays and settings as one '
+                'message (it starts with BFBK-) and opens Share. Send it to '
+                'yourself to keep it safe.',
+                'Import backup: copy that message first, then press Import. '
+                'Birthdays are merged and nothing is deleted.',
+                'Test Notification checks that notifications work on your phone.',
+                'Reset to defaults restores the look settings only. Your '
+                'birthdays stay as they are.',
+            ]),
+            ('tips', 'Tips', [
+                'Reminders arrive 7 days and 1 day before each birthday. In Settings '
+                'you can turn each one on or off and choose the time.',
+                'On Xiaomi / Redmi phones: allow Autostart for BFB and set '
+                'Battery to No restrictions, or reminders may not arrive.',
+                'No notifications? Phone Settings, then Apps, then BFB, then '
+                'Notifications.',
+                'New phone? Export a backup before, and import it after.',
+            ]),
+        ],
+    },
+    'ar': {
+        'title': 'مساعدة',
+        'intro': 'اضغط على العنوان لفتحه أو إغلاقه.',
+        'close': 'إغلاق',
+        'skip': 'تخطي',
+        'footer': 'يمكنك فتح هذه النافذة في أي وقت من زر (i).',
+        'sections': [
+            ('games', 'الألعاب', [
+                '10 ألعاب بدون حساب. اختر صنفًا ثم لعبة.',
+                'ألعاب الأصدقاء تعمل بالأكواد: ترسل كودًا لصديقك '
+                '(واتساب، رسائل...) وهو يدخله في هاتفه.',
+                'الأكواد: BFB- لعبة من يعرفني أكثر، وBFBR- نتيجتها، '
+                'وBFBL- الكذبة والحقيقة.',
+                'الكود المستلم يُستعمل مرة واحدة فقط، فلا يمكن لصقه مجددًا '
+                'للغش.',
+                'نتائج من يعرفني أكثر تجدها في قسم النتائج.',
+                'كود القنبلة: من 3 إلى 8 لاعبين، 5 ثوانٍ لكل لاعب. '
+                'وإذا انتهى الوقت تنفجر!',
+                'آخر ناجٍ: 3 لاعبين أو أكثر، و15 ثانية لكل سؤال.',
+            ]),
+            ('settings', 'الإعدادات', [
+                'الثيم واللون يغيّران شكل التطبيق كله.',
+                'استدارة الزوايا وارتفاع الأزرار وحجم الخط: اضبطها كما '
+                'يريحك.',
+                'تصدير النسخة الاحتياطية ينسخ كل أعياد الميلاد والإعدادات '
+                'في رسالة واحدة تبدأ بـ BFBK- ويفتح المشاركة. أرسلها '
+                'لنفسك لتحفظها.',
+                'استيراد النسخة: انسخ الرسالة أولًا ثم اضغط استيراد. '
+                'تُدمج الأعياد ولا يُحذف شيء.',
+                'اختبار الإشعارات يتأكد أن الإشعارات تعمل في هاتفك.',
+                'إعادة الضبط تعيد إعدادات المظهر فقط، وأعياد الميلاد '
+                'تبقى كما هي.',
+            ]),
+            ('tips', 'نصائح', [
+                'تصلك التذكيرات قبل أسبوع وقبل يوم من كل عيد ميلاد. ومن الإعدادات '
+                'يمكنك تشغيل أو إيقاف كل واحد واختيار الساعة.',
+                'في هواتف Xiaomi وRedmi: فعّل التشغيل التلقائي (Autostart) '
+                'للتطبيق واجعل البطارية بدون قيود، وإلا قد لا تصل '
+                'التذكيرات.',
+                'لا تظهر الإشعارات؟ إعدادات الهاتف ثم التطبيقات ثم BFB '
+                'ثم الإشعارات.',
+                'هاتف جديد؟ صدّر نسخة احتياطية قبل التغيير واستوردها بعده.',
+            ]),
+        ],
+    },
+}
+
+
+def wrap_shaped(text, max_w, measure):
+    """يقسّم نصًا عربيًا إلى أسطر تتّسع للعرض، ثم يشكّل كل سطر وحده،
+    لأن تشكيل الفقرة كلها ثم تركها تلتفّ يقلب ترتيب الأسطر. يرجع قائمة أسطر."""
+    lines, cur = [], ''
+    for word in text.split():
+        trial = (cur + ' ' + word).strip()
+        if cur and measure(fix_arabic(trial)) > max_w:
+            lines.append(cur)
+            cur = word
+        else:
+            cur = trial
+    if cur:
+        lines.append(cur)
+    return [fix_arabic(line) for line in lines]
+
+
+class HelpPopup(Popup):
+    first_run = BooleanProperty(False)
+    lang = StringProperty('ar')
+    lang_btn_text = StringProperty('EN')
+    close_text = StringProperty('Close')
+    dismiss_cb = ObjectProperty(None, allownone=True)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.open_keys = set()
+        self.bind(on_dismiss=self._dismissed)
+        self.rebuild()
+
+    def _dismissed(self, *args):
+        cb = self.dismiss_cb
+        if cb:
+            cb()
+
+    def toggle_lang(self):
+        self.lang = 'en' if self.lang == 'ar' else 'ar'
+        self.rebuild()
+
+    def toggle_section(self, key):
+        if key in self.open_keys:
+            self.open_keys.discard(key)
+        else:
+            self.open_keys.add(key)
+        self.rebuild()
+
+    @staticmethod
+    def _measurer(font_name, font_px):
+        try:
+            core_label = CoreLabel(font_name=font_name, font_size=font_px)
+            core_label.get_extents('test')
+            return lambda s: core_label.get_extents(s)[0]
+        except Exception:
+            return lambda s: len(s) * font_px * 0.6
+
+    def _label(self, app, text, halign, color, size):
+        lbl = Label(
+            text=text,
+            font_name=app.font,
+            font_size=sp(size) * app.font_scale,
+            color=list(color),
+            size_hint_y=None,
+            halign=halign,
+            valign='top',
+        )
+        lbl.bind(width=lambda i, w: setattr(i, 'text_size', (w, None)))
+        lbl.bind(texture_size=lambda i, s: setattr(i, 'height', s[1] + dp(6)))
+        return lbl
+
+    def _header(self, app, key, title, opened, ar, halign):
+        mark = '-' if opened else '+'
+        text = (fix_arabic(title) + '   ' + mark) if ar else (mark + '   ' + title)
+        btn = StyledButton(
+            text=text,
+            custom_bg=list(app.card_color),
+            color=list(app.text_color),
+            size_hint_y=None,
+            height=dp(46),
+            halign=halign,
+            valign='middle',
+            padding_x=dp(14),
+        )
+        btn.bind(size=lambda i, s: setattr(i, 'text_size', (s[0] - dp(28), s[1])))
+        btn.bind(on_release=lambda *a: self.toggle_section(key))
+        return btn
+
+    def rebuild(self):
+        app = App.get_running_app()
+        ar = self.lang == 'ar'
+        data = HELP_TEXT[self.lang]
+        halign = 'right' if ar else 'left'
+
+        def shape(s):
+            return fix_arabic(s) if ar else s
+
+        self.title = shape(data['title'])
+        self.lang_btn_text = 'EN' if ar else 'AR'
+        self.close_text = shape(data['skip'] if self.first_run else data['close'])
+
+        font_px = sp(14) * app.font_scale
+        max_w = Window.width * 0.94 - dp(36)
+        measure = self._measurer(app.font, font_px)
+
+        def plain(text):
+            if not ar:
+                return text
+            return '\n'.join(wrap_shaped(text, max_w, measure))
+
+        def bullets(items):
+            out = []
+            for item in items:
+                if ar:
+                    lines = wrap_shaped(item, max_w - dp(16), measure)
+                    lines[0] = lines[0] + '  -'
+                    out.append('\n'.join(lines))
+                else:
+                    out.append('- ' + item)
+            return '\n\n'.join(out)
+
+        box = self.ids.content
+        box.clear_widgets()
+        box.add_widget(self._label(app, plain(data['intro']), halign, app.muted_color, 13))
+        for key, title, items in data['sections']:
+            opened = key in self.open_keys
+            box.add_widget(self._header(app, key, title, opened, ar, halign))
+            if opened:
+                box.add_widget(self._label(app, bullets(items), halign, app.text_color, 14))
+        box.add_widget(self._label(app, plain(data['footer']), halign, app.muted_color, 12))
+
+
 try:
     from gift_ui import GiftScreen, GiftCard
 except Exception:
@@ -354,258 +582,4 @@ class BirthdaysScreen(Screen):
             try:
                 core.save_birthdays(items)
             except Exception as e:
-                app.show_status(f"Save error: {e}")
-                return
-            self.refresh_list()
-            app.show_status(core.check_and_notify())
-
-        DatePopup(show_name=True, name_text=name, date_text=date_str,
-                  save_cb=save).open()
-
-    def add_birthday(self):
-        app = App.get_running_app()
-        name = self.ids.name_input.text.strip()
-        date_str = self.birth_str.strip()
-
-        if not name or not date_str:
-            app.show_status("Please enter a name and pick a date")
-            return
-
-        err = core.check_birth(date_str)
-        if err:
-            app.show_status(err)
-            return
-
-        items = core.load_birthdays()
-        items.append({'name': name, 'date': date_str})
-        try:
-            core.save_birthdays(items)
-        except Exception as e:
-            app.show_status(f"Save error: {e}")
-            return
-
-        self.ids.name_input.text = ""
-        self.birth_str = ""
-        self.refresh_list()
-        # فحص فوري (مثلًا لو كان الموعد بعد 7 أيام أو يوم)
-        app.show_status(core.check_and_notify())
-
-
-# ---------------------------------------------------------------
-# التطبيق
-# ---------------------------------------------------------------
-class BFBApp(App):
-    ACCENTS = ACCENTS
-
-    font = StringProperty(FONT_NAME)
-    bg_color = ListProperty(THEMES['light']['bg'])
-    card_color = ListProperty(THEMES['light']['card'])
-    text_color = ListProperty(THEMES['light']['text'])
-    muted_color = ListProperty(THEMES['light']['muted'])
-    primary_color = ListProperty(ACCENTS['blue'])
-    radius = NumericProperty(10)
-    btn_height = NumericProperty(50)
-    font_scale = NumericProperty(1.0)
-    status = StringProperty('')
-    status_color = ListProperty([0.85, 0.2, 0.2, 1])
-
-    def build(self):
-        self.build_failed = False
-        if core is None:
-            self.build_failed = True
-            return error_screen(IMPORT_ERROR)
-        try:
-            Window.softinput_mode = 'below_target'
-            self.prefs = core.load_settings()
-            self.apply_prefs()
-            kv_path = os.path.join(BASE_DIR, 'ui.kv')
-            if not os.path.exists(kv_path):
-                files = ', '.join(sorted(os.listdir(BASE_DIR)))
-                raise FileNotFoundError(f"ui.kv not found in {BASE_DIR}\nFiles: {files}")
-            return Builder.load_file(kv_path)
-        except Exception:
-            self.build_failed = True
-            tb = traceback.format_exc()
-            try:
-                core.log(tb)
-            except Exception:
-                pass
-            return error_screen(tb + ("\nFONT: " + FONT_ERROR if FONT_ERROR else ""))
-
-    # ---------- الإعدادات ----------
-    def apply_prefs(self):
-        theme = THEMES.get(self.prefs.get('theme'), THEMES['light'])
-        self.bg_color = theme['bg']
-        self.card_color = theme['card']
-        self.text_color = theme['text']
-        self.muted_color = theme['muted']
-        self.primary_color = ACCENTS.get(self.prefs.get('accent'), ACCENTS['blue'])
-        self.radius = float(self.prefs.get('radius', 10))
-        self.btn_height = float(self.prefs.get('btn_height', 50))
-        self.font_scale = float(self.prefs.get('font_scale', 1.0))
-
-    def _save_later(self):
-        Clock.unschedule(self._save_prefs)
-        Clock.schedule_once(self._save_prefs, 0.6)
-
-    def _save_prefs(self, *args):
-        try:
-            core.save_settings(self.prefs)
-        except Exception as e:
-            core.log(f"save settings: {e}")
-
-    def set_theme(self, name):
-        self.prefs['theme'] = name
-        self.apply_prefs()
-        self._save_later()
-
-    def set_accent(self, name):
-        self.prefs['accent'] = name
-        self.apply_prefs()
-        self._save_later()
-
-    def set_radius(self, value):
-        if abs(self.radius - value) < 0.001:
-            return
-        self.prefs['radius'] = float(value)
-        self.radius = float(value)
-        self._save_later()
-
-    def set_btn_height(self, value):
-        if abs(self.btn_height - value) < 0.001:
-            return
-        self.prefs['btn_height'] = float(value)
-        self.btn_height = float(value)
-        self._save_later()
-
-    def set_font_scale(self, value):
-        if abs(self.font_scale - value) < 0.001:
-            return
-        self.prefs['font_scale'] = round(float(value), 2)
-        self.font_scale = round(float(value), 2)
-        self._save_later()
-
-    def reset_settings(self):
-        self.prefs = dict(core.DEFAULT_SETTINGS)
-        self.apply_prefs()
-        self._save_later()
-
-    # ---------- التنقل ----------
-    def go(self, screen_name):
-        self.root.ids.sm.current = screen_name
-
-    # ---------- الحالة والإشعارات ----------
-    def show_status(self, errors, ok=False):
-        if not errors:
-            self.status = ''
-            return
-        if isinstance(errors, str):
-            msg = errors
-        else:
-            msg = "Notification error: " + str(errors[0])
-        self.status = msg
-        self.status_color = [0.1, 0.6, 0.2, 1] if ok else [0.85, 0.2, 0.2, 1]
-
-    def test_notification(self):
-        ok, err = core.test_notification()
-        if ok:
-            self.show_status(
-                "Notification sent. If you see nothing, check phone settings.",
-                ok=True)
-        else:
-            self.show_status("Error: " + err)
-
-    # ---------- نسخة احتياطية ----------
-    def export_backup(self):
-        try:
-            code = core.export_backup()
-            text = "BFB backup - keep this message safe:\n" + code
-            from kivy.core.clipboard import Clipboard
-            Clipboard.copy(text)
-            if platform == 'android':
-                from jnius import autoclass, cast
-                PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                Intent = autoclass('android.content.Intent')
-                JString = autoclass('java.lang.String')
-                intent = Intent(Intent.ACTION_SEND)
-                intent.setType('text/plain')
-                intent.putExtra(Intent.EXTRA_TEXT, cast('java.lang.CharSequence', JString(text)))
-                chooser = Intent.createChooser(intent, cast('java.lang.CharSequence', JString('BFB')))
-                PythonActivity.mActivity.startActivity(chooser)
-            self.show_status("Backup copied. Save it somewhere safe (e.g. send it to yourself).",
-                             ok=True)
-        except Exception as e:
-            self.show_status(f"Backup error: {e}")
-
-    def import_backup(self):
-        try:
-            from kivy.core.clipboard import Clipboard
-            added, skipped = core.import_backup(Clipboard.paste() or '')
-        except ValueError:
-            self.show_status("No valid backup found in the clipboard. Copy the backup message first.")
-            return
-        except Exception as e:
-            self.show_status(f"Import error: {e}")
-            return
-        self.prefs = core.load_settings()
-        self.apply_prefs()
-        try:
-            self.root.ids.sm.get_screen('birthdays').refresh_list()
-        except Exception:
-            pass
-        self.show_status(f"Backup restored: {added} added, {skipped} already existed.", ok=True)
-
-    # ---------- بيانات ----------
-    def edit_birthday(self, name, date_str):
-        self.root.ids.sm.get_screen('birthdays').edit_birthday(name, date_str)
-
-    def ask_delete(self, name, date_str):
-        ConfirmPopup(
-            msg='Delete this birthday?',
-            sub=fix_arabic(name),
-            yes_cb=lambda: self.delete_birthday(name, date_str),
-        ).open()
-
-    def delete_birthday(self, name, date_str):
-        items = [
-            b for b in core.load_birthdays()
-            if not (b['name'] == name and b['date'] == date_str)
-        ]
-        try:
-            core.save_birthdays(items)
-        except Exception as e:
-            self.show_status(f"Delete error: {e}")
-        self.root.ids.sm.get_screen('birthdays').refresh_list()
-
-    # ---------- التشغيل ----------
-    def on_start(self):
-        if getattr(self, 'build_failed', False):
-            return
-        if platform == 'android':
-            try:
-                from android.permissions import request_permissions
-                request_permissions(
-                    ['android.permission.POST_NOTIFICATIONS'],
-                    lambda perms, grants: self.start_background()
-                )
-            except Exception as e:
-                core.log(f"permission error: {e}")
-                self.start_background()
-        else:
-            Clock.schedule_once(lambda dt: self.show_status(core.check_and_notify()), 1)
-
-    def start_background(self, *args):
-        try:
-            self.show_status(core.check_and_notify())
-        except Exception as e:
-            core.log(f"start check: {e}")
-        try:
-            from android import AndroidService
-            svc = AndroidService('BFB Reminder', 'تذكير أعياد الميلاد يعمل')
-            svc.start('service started')
-        except Exception as e:
-            core.log(f"service error: {e}")
-
-
-if __name__ == '__main__':
-    BFBApp().run()
+                app.show_status(f"Save error:
