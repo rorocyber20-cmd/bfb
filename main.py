@@ -112,7 +112,16 @@ class NavButton(ToggleButton):
 
 
 class CustomTextInput(TextInput):
-    pass
+    """حقل نص يعرض العربية مشكَّلة ومرتبة أثناء الكتابة (النص الحقيقي يبقى كما كتبه المستخدم)."""
+
+    def _create_line_label(self, text, *args, **kwargs):
+        hint = kwargs.get('hint', args[0] if args else False)
+        try:
+            if not hint and text and any('\u0600' <= c <= '\u06FF' for c in text):
+                text = fix_arabic(text)
+        except Exception:
+            pass
+        return super()._create_line_label(text, *args, **kwargs)
 
 
 class BirthdayRow(BoxLayout):
@@ -363,6 +372,46 @@ class BFBApp(App):
                 ok=True)
         else:
             self.show_status("Error: " + err)
+
+    # ---------- نسخة احتياطية ----------
+    def export_backup(self):
+        try:
+            code = core.export_backup()
+            text = "BFB backup - keep this message safe:\n" + code
+            from kivy.core.clipboard import Clipboard
+            Clipboard.copy(text)
+            if platform == 'android':
+                from jnius import autoclass, cast
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                Intent = autoclass('android.content.Intent')
+                JString = autoclass('java.lang.String')
+                intent = Intent(Intent.ACTION_SEND)
+                intent.setType('text/plain')
+                intent.putExtra(Intent.EXTRA_TEXT, cast('java.lang.CharSequence', JString(text)))
+                chooser = Intent.createChooser(intent, cast('java.lang.CharSequence', JString('BFB')))
+                PythonActivity.mActivity.startActivity(chooser)
+            self.show_status("Backup copied. Save it somewhere safe (e.g. send it to yourself).",
+                             ok=True)
+        except Exception as e:
+            self.show_status(f"Backup error: {e}")
+
+    def import_backup(self):
+        try:
+            from kivy.core.clipboard import Clipboard
+            added, skipped = core.import_backup(Clipboard.paste() or '')
+        except ValueError:
+            self.show_status("No valid backup found in the clipboard. Copy the backup message first.")
+            return
+        except Exception as e:
+            self.show_status(f"Import error: {e}")
+            return
+        self.prefs = core.load_settings()
+        self.apply_prefs()
+        try:
+            self.root.ids.sm.get_screen('birthdays').refresh_list()
+        except Exception:
+            pass
+        self.show_status(f"Backup restored: {added} added, {skipped} already existed.", ok=True)
 
     # ---------- بيانات ----------
     def delete_birthday(self, name, date_str):
