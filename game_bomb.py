@@ -154,7 +154,7 @@ class BombMixin:
         box.add_widget(timer)
         self._bc_lbl = timer
         for wi in self.bc_wires:
-            b = self.button(self.wname(wi), lambda wi=wi: self.bc_cut(wi))
+            b = self.button(self.shape(self.wname(wi), 16, 100), lambda wi=wi: self.bc_cut(wi))
             b.custom_bg = WIRES[wi][2]
             box.add_widget(b)
         if self.bc_left > 0:
