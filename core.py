@@ -69,6 +69,10 @@ DEFAULT_SETTINGS = {
     'radius': 10,
     'btn_height': 50,
     'font_scale': 1.0,
+    'help_seen': False,
+    'notify_week': 1,
+    'notify_day': 1,
+    'notify_hour': 9,
 }
 
 
@@ -270,6 +274,13 @@ def test_notification():
     return send_notification("BFB Reminder", "اختبار الإشعارات ✅")
 
 
+def notify_hour():
+    try:
+        return max(0, min(23, int(load_settings().get('notify_hour', 9))))
+    except Exception:
+        return 9
+
+
 def check_and_notify():
     """يرسل إشعار قبل أسبوع وقبل يوم، مرة واحدة فقط لكل موعد.
     يرجع قائمة بأخطاء الإرسال (فارغة إن لم يحدث خطأ)."""
@@ -278,13 +289,22 @@ def check_and_notify():
     notified = _read(NOTIFIED_FILE, {})
     changed = False
 
+    prefs = load_settings()
+    wanted = set()
+    if prefs.get('notify_week', 1):
+        wanted.add(7)
+    if prefs.get('notify_day', 1):
+        wanted.add(1)
+    if not wanted:
+        return errors
+
     for item in load_birthdays():
         try:
             d = days_until(item['date'])
         except Exception:
             continue
 
-        if d not in (7, 1):
+        if d not in wanted:
             continue
 
         key = f"{item['name']}|{item['date']}|{d}"
