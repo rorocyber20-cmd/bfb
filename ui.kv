@@ -332,6 +332,15 @@
                 value_track_color: app.primary_color
                 on_value: app.set_font_scale(self.value)
 
+            SectionLabel:
+                text: 'Backup'
+            StyledButton:
+                text: 'Export backup (copy + share)'
+                on_press: app.export_backup()
+            StyledButton:
+                text: 'Import backup (from clipboard)'
+                custom_bg: [0.35, 0.35, 0.45, 1]
+                on_press: app.import_backup()
             StyledButton:
                 text: 'Test Notification'
                 custom_bg: [0.35, 0.35, 0.45, 1]
