@@ -43,8 +43,24 @@ jobs:
     - name: Build APK
       run: yes | buildozer -v android debug
 
-    - name: Show signing fingerprint (safe to share)
-      run: keytool -printcert -jarfile bin/*.apk | grep -i "SHA256" || true
+    - name: Re-sign APK with the fixed key
+      run: |
+        APKSIGNER=$(find ~/.buildozer -name apksigner -type f | sort -V | tail -1)
+        ZIPALIGN=$(find ~/.buildozer -name zipalign -type f | sort -V | tail -1)
+        if [ -z "$APKSIGNER" ] || [ -z "$ZIPALIGN" ]; then
+          echo "::error::apksigner or zipalign not found in the Android SDK"
+          exit 1
+        fi
+        for f in bin/*.apk; do
+          "$ZIPALIGN" -p -f 4 "$f" "$f.aligned"
+          "$APKSIGNER" sign --ks ~/.android/debug.keystore --ks-pass pass:android \
+            --key-pass pass:android --ks-key-alias androiddebugkey \
+            --out "$f.signed" "$f.aligned"
+          mv "$f.signed" "$f"
+          rm -f "$f.aligned" "$f.signed.idsig" "$f.idsig"
+        done
+        echo "Signer certificate (expected to start with c5a5e027):"
+        "$APKSIGNER" verify --print-certs bin/*.apk | grep -i "SHA-256"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
