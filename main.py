@@ -1,19 +1,24 @@
 import os
 import traceback
 
+from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.text import LabelBase
 from kivy.core.window import Window
 from kivy.lang import Builder
-from kivy.properties import ListProperty, NumericProperty, StringProperty
+from kivy.properties import (BooleanProperty, ListProperty, NumericProperty,
+                             ObjectProperty, StringProperty)
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
+from kivy.uix.stencilview import StencilView
 from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
 from kivy.utils import platform
-from datetime import datetime
+from datetime import date, datetime
 
 IMPORT_ERROR = ''
 try:
@@ -124,10 +129,100 @@ class CustomTextInput(TextInput):
         return super()._create_line_label(text, *args, **kwargs)
 
 
+class LogoBox(StencilView, FloatLayout):
+    """يقصّ ما يخرج عن حدوده، فيبدو اللوڨو طالعًا من وراء خانة الاسم."""
+
+
 class BirthdayRow(BoxLayout):
-    info = StringProperty('')
     bname = StringProperty('')
     bdate = StringProperty('')
+    name_text = StringProperty('')
+    sub_text = StringProperty('')
+    days_text = StringProperty('')
+    days_color = ListProperty([0.18, 0.70, 0.40, 1])
+
+
+DAYS_GREEN = [0.18, 0.70, 0.40, 1]
+DAYS_ORANGE = [0.95, 0.60, 0.10, 1]
+DAYS_RED = [0.90, 0.22, 0.25, 1]
+
+
+def days_style(days):
+    """نص ولون الأيام المتبقية: أخضر للبعيد، برتقالي خلال أسبوع، أحمر اليوم."""
+    if days == 0:
+        return 'Today!', DAYS_RED
+    if days == 1:
+        return 'Tomorrow', DAYS_ORANGE
+    if days <= 7:
+        return f'In {days} days', DAYS_ORANGE
+    return f'In {days} days', DAYS_GREEN
+
+
+MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+
+class DatePopup(Popup):
+    """نافذة اختيار التاريخ (يوم/شهر/سنة)، ومعها خانة اسم عند التعديل."""
+    show_name = BooleanProperty(False)
+    name_text = StringProperty('')
+    date_text = StringProperty('')
+    save_cb = ObjectProperty(None, allownone=True)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        ids = self.ids
+        ids.day_sp.values = [str(i) for i in range(1, 32)]
+        ids.month_sp.values = MONTHS
+        ids.year_sp.values = [str(y) for y in range(date.today().year, 1919, -1)]
+        try:
+            d = datetime.strptime(self.date_text, '%Y-%m-%d').date()
+        except ValueError:
+            d = date(2000, 1, 1)
+        ids.day_sp.text = str(d.day)
+        ids.month_sp.text = MONTHS[d.month - 1]
+        ids.year_sp.text = str(d.year)
+        if self.show_name:
+            ids.name_in.text = self.name_text
+
+    def confirm(self):
+        ids = self.ids
+        ids.err.text = ''
+        name = ''
+        if self.show_name:
+            name = ids.name_in.text.strip()
+            if not name:
+                ids.err.text = 'Please enter a name'
+                return
+        try:
+            y = int(ids.year_sp.text)
+            m = MONTHS.index(ids.month_sp.text) + 1
+            d = int(ids.day_sp.text)
+            date_str = date(y, m, d).isoformat()
+        except ValueError:
+            ids.err.text = 'This date does not exist'
+            return
+        err = core.check_birth(date_str)
+        if err:
+            ids.err.text = err
+            return
+        cb = self.save_cb
+        self.dismiss()
+        if cb:
+            cb(name, date_str)
+
+
+class ConfirmPopup(Popup):
+    """نافذة تأكيد (للحذف)."""
+    msg = StringProperty('')
+    sub = StringProperty('')
+    yes_cb = ObjectProperty(None, allownone=True)
+
+    def yes(self):
+        cb = self.yes_cb
+        self.dismiss()
+        if cb:
+            cb()
 
 
 try:
@@ -190,11 +285,26 @@ class SettingsScreen(Screen):
 
 
 class BirthdaysScreen(Screen):
+    birth_str = StringProperty('')
+    rise = NumericProperty(0)  # 0 = اللوڨو مخبّأ، 1 = ظاهر
+
     def on_kv_post(self, base_widget):
         Clock.schedule_once(self.refresh_list, 0.2)
+        self.queue_intro()
 
     def on_pre_enter(self, *args):
         self.refresh_list()
+        self.queue_intro()
+
+    def queue_intro(self):
+        Clock.unschedule(self.play_intro)
+        self.rise = 0
+        Clock.schedule_once(self.play_intro, 0.15)
+
+    def play_intro(self, *args):
+        Animation.cancel_all(self, 'rise')
+        self.rise = 0
+        Animation(rise=1, duration=0.9, t='out_back').start(self)
 
     def refresh_list(self, *args):
         # قد يُستدعى أثناء بناء الشاشة قبل أن تكتمل عناصرها
@@ -207,31 +317,63 @@ class BirthdaysScreen(Screen):
         rows = []
         for item in core.load_birthdays():
             try:
-                rows.append((core.days_until(item['date']), item['name'], item['date']))
+                rows.append((core.days_until(item['date']),
+                             core.next_age(item['date']),
+                             item['name'], item['date']))
             except Exception:
                 continue
 
         rows.sort(key=lambda r: r[0])
-        for days_left, name, date_str in rows:
-            info = (
-                f"Days left: {days_left}  |  Name: {fix_arabic(name)}\n"
-                f"Birth date: {date_str}"
-            )
-            layout.add_widget(BirthdayRow(info=info, bname=name, bdate=date_str))
+        for days_left, age, name, date_str in rows:
+            days_text, days_color = days_style(days_left)
+            layout.add_widget(BirthdayRow(
+                bname=name,
+                bdate=date_str,
+                name_text=fix_arabic(name),
+                sub_text=f"Turns {age}  |  {date_str}",
+                days_text=days_text,
+                days_color=days_color,
+            ))
+
+    def open_date_picker(self):
+        DatePopup(
+            show_name=False,
+            date_text=self.birth_str,
+            save_cb=lambda n, d: setattr(self, 'birth_str', d),
+        ).open()
+
+    def edit_birthday(self, name, date_str):
+        def save(new_name, new_date):
+            app = App.get_running_app()
+            items = core.load_birthdays()
+            for b in items:
+                if b['name'] == name and b['date'] == date_str:
+                    b['name'] = new_name
+                    b['date'] = new_date
+                    break
+            try:
+                core.save_birthdays(items)
+            except Exception as e:
+                app.show_status(f"Save error: {e}")
+                return
+            self.refresh_list()
+            app.show_status(core.check_and_notify())
+
+        DatePopup(show_name=True, name_text=name, date_text=date_str,
+                  save_cb=save).open()
 
     def add_birthday(self):
         app = App.get_running_app()
         name = self.ids.name_input.text.strip()
-        date_str = self.ids.date_input.text.strip()
+        date_str = self.birth_str.strip()
 
         if not name or not date_str:
-            app.show_status("Please enter a name and a date")
+            app.show_status("Please enter a name and pick a date")
             return
 
-        try:
-            datetime.strptime(date_str, "%Y-%m-%d")
-        except ValueError:
-            app.show_status("Wrong date format. Use YYYY-MM-DD")
+        err = core.check_birth(date_str)
+        if err:
+            app.show_status(err)
             return
 
         items = core.load_birthdays()
@@ -243,7 +385,7 @@ class BirthdaysScreen(Screen):
             return
 
         self.ids.name_input.text = ""
-        self.ids.date_input.text = ""
+        self.birth_str = ""
         self.refresh_list()
         # فحص فوري (مثلًا لو كان الموعد بعد 7 أيام أو يوم)
         app.show_status(core.check_and_notify())
@@ -414,6 +556,16 @@ class BFBApp(App):
         self.show_status(f"Backup restored: {added} added, {skipped} already existed.", ok=True)
 
     # ---------- بيانات ----------
+    def edit_birthday(self, name, date_str):
+        self.root.ids.sm.get_screen('birthdays').edit_birthday(name, date_str)
+
+    def ask_delete(self, name, date_str):
+        ConfirmPopup(
+            msg='Delete this birthday?',
+            sub=fix_arabic(name),
+            yes_cb=lambda: self.delete_birthday(name, date_str),
+        ).open()
+
     def delete_birthday(self, name, date_str):
         items = [
             b for b in core.load_birthdays()
