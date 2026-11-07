@@ -84,6 +84,67 @@ def save_settings(prefs):
     _write(SETTINGS_FILE, prefs)
 
 
+# ---------------------------------------------------------------
+# النسخ الاحتياطي: نص واحد يحوي أعياد الميلاد وإعدادات المظهر
+# ---------------------------------------------------------------
+BACKUP_PREFIX = 'BFBK-'
+
+
+def export_backup():
+    import base64
+    import zlib
+    payload = {'v': 1, 'birthdays': load_birthdays(), 'settings': load_settings()}
+    raw = json.dumps(payload, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+    return BACKUP_PREFIX + base64.urlsafe_b64encode(zlib.compress(raw, 9)).decode('ascii')
+
+
+def import_backup(text):
+    """يدمج النسخة الاحتياطية: يضيف الأعياد غير الموجودة ويستعيد الإعدادات.
+    يرجع (عدد الأعياد المضافة، عدد الأعياد الموجودة مسبقًا). يرفع ValueError إن كان النص غير صالح."""
+    import base64
+    import re
+    import zlib
+    m = re.search(BACKUP_PREFIX + r'([A-Za-z0-9_\-=]+)', text or '')
+    if not m:
+        raise ValueError('no backup code')
+    try:
+        data = json.loads(zlib.decompress(base64.urlsafe_b64decode(m.group(1))).decode('utf-8'))
+        items = data['birthdays']
+        prefs = data.get('settings', {})
+        if not isinstance(items, list) or not isinstance(prefs, dict):
+            raise ValueError('bad structure')
+    except Exception:
+        raise ValueError('bad backup code')
+    current = load_birthdays()
+    seen = {(b['name'], b['date']) for b in current}
+    added = skipped = 0
+    for b in items:
+        if not (isinstance(b, dict) and b.get('name') and b.get('date')):
+            continue
+        key = (str(b['name']), str(b['date']))
+        try:
+            datetime.strptime(key[1], '%Y-%m-%d')
+        except ValueError:
+            continue
+        if key in seen:
+            skipped += 1
+            continue
+        seen.add(key)
+        current.append({'name': key[0], 'date': key[1]})
+        added += 1
+    save_birthdays(current)
+    merged = load_settings()
+    for k, default in DEFAULT_SETTINGS.items():
+        v = prefs.get(k)
+        if isinstance(default, str) and isinstance(v, str):
+            merged[k] = v
+        elif isinstance(default, (int, float)) and isinstance(v, (int, float)) \
+                and not isinstance(v, bool):
+            merged[k] = v
+    save_settings(merged)
+    return added, skipped
+
+
 def _safe_replace_year(d, year):
     try:
         return d.replace(year=year)
