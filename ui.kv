@@ -140,6 +140,24 @@
             pos: self.x + self.width * 0.30, self.top - dp(18)
             size: dp(3), dp(3)
 
+# زر المساعدة: دائرة فيها حرف i
+<InfoButton@Button>:
+    text: 'i'
+    bold: True
+    font_name: app.font
+    font_size: sp(18)
+    color: app.primary_color
+    background_normal: ''
+    background_down: ''
+    background_color: 0, 0, 0, 0
+    opacity: 0.6 if self.state == 'down' else 1
+    canvas.before:
+        Color:
+            rgba: app.primary_color
+        Line:
+            circle: self.center_x, self.center_y, min(self.width, self.height) / 2 - dp(1)
+            width: dp(1.3)
+
 <BirthdayRow>:
     orientation: 'horizontal'
     size_hint_y: None
@@ -299,6 +317,42 @@
                 custom_bg: [0.85, 0.2, 0.2, 1]
                 on_release: root.yes()
 
+<HelpPopup>:
+    title_font: app.font
+    title_color: app.text_color
+    separator_color: app.primary_color
+    background: ''
+    background_color: app.bg_color
+    size_hint: 0.94, 0.82
+    auto_dismiss: True
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: dp(8)
+        padding: [0, dp(6), 0, 0]
+        BoxLayout:
+            size_hint_y: None
+            height: dp(38)
+            Widget:
+            StyledButton:
+                text: root.lang_btn_text
+                size_hint_x: None
+                width: dp(76)
+                height: dp(36)
+                pos_hint: {'center_y': 0.5}
+                on_release: root.toggle_lang()
+        ScrollView:
+            do_scroll_x: False
+            BoxLayout:
+                id: content
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: dp(8)
+                padding: [0, dp(4)]
+        StyledButton:
+            text: root.close_text
+            on_release: root.dismiss()
+
 # ---------------------------------------------------------------
 # الشاشات
 # ---------------------------------------------------------------
@@ -308,6 +362,15 @@
         orientation: 'vertical'
         padding: [dp(16), dp(24), dp(16), dp(16)]
         spacing: dp(12)
+        # فراغ علوي ينزّل المحتوى إلى ما فوق وسط الشاشة، وفيه زر المساعدة
+        FloatLayout:
+            size_hint_y: None
+            height: root.height * 0.15
+            InfoButton:
+                size_hint: None, None
+                size: dp(38), dp(38)
+                pos_hint: {'right': 1, 'top': 1}
+                on_release: app.show_help()
         # اللوڨو + خانة الاسم ملتصقان (الحافة العليا للخانة تقصّ اللوڨو)
         BoxLayout:
             orientation: 'vertical'
@@ -541,6 +604,29 @@
                 value_track: True
                 value_track_color: app.primary_color
                 on_value: app.set_font_scale(self.value)
+
+            SectionLabel:
+                text: 'Notifications'
+            StyledButton:
+                text: '1 week before: ' + ('ON' if app.notify_week else 'OFF')
+                custom_bg: [] if app.notify_week else [0.5, 0.5, 0.55, 1]
+                on_press: app.toggle_notify('week')
+            StyledButton:
+                text: '1 day before: ' + ('ON' if app.notify_day else 'OFF')
+                custom_bg: [] if app.notify_day else [0.5, 0.5, 0.55, 1]
+                on_press: app.toggle_notify('day')
+            SectionLabel:
+                text: 'Notification time: ' + ('%02d:00' % int(app.notify_hour))
+            BoxLayout:
+                size_hint_y: None
+                height: dp(app.btn_height)
+                spacing: dp(10)
+                StyledButton:
+                    text: '-'
+                    on_press: app.change_hour(-1)
+                StyledButton:
+                    text: '+'
+                    on_press: app.change_hour(1)
 
             SectionLabel:
                 text: 'Backup'
