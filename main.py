@@ -582,4 +582,294 @@ class BirthdaysScreen(Screen):
             try:
                 core.save_birthdays(items)
             except Exception as e:
-                app.show_status(f"Save error:
+                app.show_status(f"Save error: {e}")
+                return
+            self.refresh_list()
+            app.show_status(core.check_and_notify())
+
+        DatePopup(show_name=True, name_text=name, date_text=date_str,
+                  save_cb=save).open()
+
+    def add_birthday(self):
+        app = App.get_running_app()
+        name = self.ids.name_input.text.strip()
+        date_str = self.birth_str.strip()
+
+        if not name or not date_str:
+            app.show_status("Please enter a name and pick a date")
+            return
+
+        err = core.check_birth(date_str)
+        if err:
+            app.show_status(err)
+            return
+
+        items = core.load_birthdays()
+        items.append({'name': name, 'date': date_str})
+        try:
+            core.save_birthdays(items)
+        except Exception as e:
+            app.show_status(f"Save error: {e}")
+            return
+
+        self.ids.name_input.text = ""
+        self.birth_str = ""
+        self.refresh_list()
+        # فحص فوري (مثلًا لو كان الموعد بعد 7 أيام أو يوم)
+        app.show_status(core.check_and_notify())
+
+
+# ---------------------------------------------------------------
+# التطبيق
+# ---------------------------------------------------------------
+class BFBApp(App):
+    ACCENTS = ACCENTS
+
+    font = StringProperty(FONT_NAME)
+    bg_color = ListProperty(THEMES['light']['bg'])
+    card_color = ListProperty(THEMES['light']['card'])
+    text_color = ListProperty(THEMES['light']['text'])
+    muted_color = ListProperty(THEMES['light']['muted'])
+    primary_color = ListProperty(ACCENTS['blue'])
+    radius = NumericProperty(10)
+    btn_height = NumericProperty(50)
+    font_scale = NumericProperty(1.0)
+    notify_week = NumericProperty(1)
+    notify_day = NumericProperty(1)
+    notify_hour = NumericProperty(9)
+    status = StringProperty('')
+    status_color = ListProperty([0.85, 0.2, 0.2, 1])
+
+    def build(self):
+        self.build_failed = False
+        if core is None:
+            self.build_failed = True
+            return error_screen(IMPORT_ERROR)
+        try:
+            Window.softinput_mode = 'below_target'
+            self.prefs = core.load_settings()
+            self.apply_prefs()
+            kv_path = os.path.join(BASE_DIR, 'ui.kv')
+            if not os.path.exists(kv_path):
+                files = ', '.join(sorted(os.listdir(BASE_DIR)))
+                raise FileNotFoundError(f"ui.kv not found in {BASE_DIR}\nFiles: {files}")
+            return Builder.load_file(kv_path)
+        except Exception:
+            self.build_failed = True
+            tb = traceback.format_exc()
+            try:
+                core.log(tb)
+            except Exception:
+                pass
+            return error_screen(tb + ("\nFONT: " + FONT_ERROR if FONT_ERROR else ""))
+
+    # ---------- الإعدادات ----------
+    def apply_prefs(self):
+        theme = THEMES.get(self.prefs.get('theme'), THEMES['light'])
+        self.bg_color = theme['bg']
+        self.card_color = theme['card']
+        self.text_color = theme['text']
+        self.muted_color = theme['muted']
+        self.primary_color = ACCENTS.get(self.prefs.get('accent'), ACCENTS['blue'])
+        self.radius = float(self.prefs.get('radius', 10))
+        self.btn_height = float(self.prefs.get('btn_height', 50))
+        self.font_scale = float(self.prefs.get('font_scale', 1.0))
+        self.notify_week = 1 if self.prefs.get('notify_week', 1) else 0
+        self.notify_day = 1 if self.prefs.get('notify_day', 1) else 0
+        try:
+            self.notify_hour = max(0, min(23, int(self.prefs.get('notify_hour', 9))))
+        except Exception:
+            self.notify_hour = 9
+
+    def _save_later(self):
+        Clock.unschedule(self._save_prefs)
+        Clock.schedule_once(self._save_prefs, 0.6)
+
+    def _save_prefs(self, *args):
+        try:
+            core.save_settings(self.prefs)
+        except Exception as e:
+            core.log(f"save settings: {e}")
+
+    def set_theme(self, name):
+        self.prefs['theme'] = name
+        self.apply_prefs()
+        self._save_later()
+
+    def set_accent(self, name):
+        self.prefs['accent'] = name
+        self.apply_prefs()
+        self._save_later()
+
+    def set_radius(self, value):
+        if abs(self.radius - value) < 0.001:
+            return
+        self.prefs['radius'] = float(value)
+        self.radius = float(value)
+        self._save_later()
+
+    def set_btn_height(self, value):
+        if abs(self.btn_height - value) < 0.001:
+            return
+        self.prefs['btn_height'] = float(value)
+        self.btn_height = float(value)
+        self._save_later()
+
+    def set_font_scale(self, value):
+        if abs(self.font_scale - value) < 0.001:
+            return
+        self.prefs['font_scale'] = round(float(value), 2)
+        self.font_scale = round(float(value), 2)
+        self._save_later()
+
+    def toggle_notify(self, which):
+        key = 'notify_week' if which == 'week' else 'notify_day'
+        self.prefs[key] = 0 if self.prefs.get(key, 1) else 1
+        self.apply_prefs()
+        self._save_later()
+
+    def change_hour(self, delta):
+        self.prefs['notify_hour'] = (int(self.notify_hour) + int(delta)) % 24
+        self.apply_prefs()
+        self._save_later()
+
+    def reset_settings(self):
+        seen = self.prefs.get('help_seen', False)
+        self.prefs = dict(core.DEFAULT_SETTINGS)
+        self.prefs['help_seen'] = seen
+        self.apply_prefs()
+        self._save_later()
+
+    # ---------- المساعدة ----------
+    def show_help(self, first_run=False):
+        HelpPopup(first_run=first_run, dismiss_cb=self._help_done).open()
+
+    def _help_done(self):
+        if not self.prefs.get('help_seen'):
+            self.prefs['help_seen'] = True
+            self._save_later()
+
+    def _maybe_show_help(self, dt):
+        if not self.prefs.get('help_seen'):
+            self.show_help(first_run=True)
+
+    # ---------- التنقل ----------
+    def go(self, screen_name):
+        self.root.ids.sm.current = screen_name
+
+    # ---------- الحالة والإشعارات ----------
+    def show_status(self, errors, ok=False):
+        if not errors:
+            self.status = ''
+            return
+        if isinstance(errors, str):
+            msg = errors
+        else:
+            msg = "Notification error: " + str(errors[0])
+        self.status = msg
+        self.status_color = [0.1, 0.6, 0.2, 1] if ok else [0.85, 0.2, 0.2, 1]
+
+    def test_notification(self):
+        ok, err = core.test_notification()
+        if ok:
+            self.show_status(
+                "Notification sent. If you see nothing, check phone settings.",
+                ok=True)
+        else:
+            self.show_status("Error: " + err)
+
+    # ---------- نسخة احتياطية ----------
+    def export_backup(self):
+        try:
+            code = core.export_backup()
+            text = "BFB backup - keep this message safe:\n" + code
+            from kivy.core.clipboard import Clipboard
+            Clipboard.copy(text)
+            if platform == 'android':
+                from jnius import autoclass, cast
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                Intent = autoclass('android.content.Intent')
+                JString = autoclass('java.lang.String')
+                intent = Intent(Intent.ACTION_SEND)
+                intent.setType('text/plain')
+                intent.putExtra(Intent.EXTRA_TEXT, cast('java.lang.CharSequence', JString(text)))
+                chooser = Intent.createChooser(intent, cast('java.lang.CharSequence', JString('BFB')))
+                PythonActivity.mActivity.startActivity(chooser)
+            self.show_status("Backup copied. Save it somewhere safe (e.g. send it to yourself).",
+                             ok=True)
+        except Exception as e:
+            self.show_status(f"Backup error: {e}")
+
+    def import_backup(self):
+        try:
+            from kivy.core.clipboard import Clipboard
+            added, skipped = core.import_backup(Clipboard.paste() or '')
+        except ValueError:
+            self.show_status("No valid backup found in the clipboard. Copy the backup message first.")
+            return
+        except Exception as e:
+            self.show_status(f"Import error: {e}")
+            return
+        self.prefs = core.load_settings()
+        self.apply_prefs()
+        try:
+            self.root.ids.sm.get_screen('birthdays').refresh_list()
+        except Exception:
+            pass
+        self.show_status(f"Backup restored: {added} added, {skipped} already existed.", ok=True)
+
+    # ---------- بيانات ----------
+    def edit_birthday(self, name, date_str):
+        self.root.ids.sm.get_screen('birthdays').edit_birthday(name, date_str)
+
+    def ask_delete(self, name, date_str):
+        ConfirmPopup(
+            msg='Delete this birthday?',
+            sub=fix_arabic(name),
+            yes_cb=lambda: self.delete_birthday(name, date_str),
+        ).open()
+
+    def delete_birthday(self, name, date_str):
+        items = [
+            b for b in core.load_birthdays()
+            if not (b['name'] == name and b['date'] == date_str)
+        ]
+        try:
+            core.save_birthdays(items)
+        except Exception as e:
+            self.show_status(f"Delete error: {e}")
+        self.root.ids.sm.get_screen('birthdays').refresh_list()
+
+    # ---------- التشغيل ----------
+    def on_start(self):
+        if getattr(self, 'build_failed', False):
+            return
+        Clock.schedule_once(self._maybe_show_help, 1.5)
+        if platform == 'android':
+            try:
+                from android.permissions import request_permissions
+                request_permissions(
+                    ['android.permission.POST_NOTIFICATIONS'],
+                    lambda perms, grants: self.start_background()
+                )
+            except Exception as e:
+                core.log(f"permission error: {e}")
+                self.start_background()
+        else:
+            Clock.schedule_once(lambda dt: self.show_status(core.check_and_notify()), 1)
+
+    def start_background(self, *args):
+        try:
+            self.show_status(core.check_and_notify())
+        except Exception as e:
+            core.log(f"start check: {e}")
+        try:
+            from android import AndroidService
+            svc = AndroidService('BFB Reminder', 'تذكير أعياد الميلاد يعمل')
+            svc.start('service started')
+        except Exception as e:
+            core.log(f"service error: {e}")
+
+
+if __name__ == '__main__':
+    BFBApp().run()
