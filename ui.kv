@@ -79,11 +79,72 @@
     halign: 'center'
     valign: 'middle'
 
+<AppSpinnerOption@SpinnerOption>:
+    background_normal: ''
+    background_down: ''
+    background_color: app.card_color
+    color: app.text_color
+    font_name: app.font
+    font_size: sp(16)
+    size_hint_y: None
+    height: dp(44)
+    canvas.after:
+        Color:
+            rgba: app.muted_color[0], app.muted_color[1], app.muted_color[2], 0.3
+        Line:
+            points: [self.x, self.y, self.right, self.y]
+            width: 1
+
+<AppSpinner@Spinner>:
+    background_normal: ''
+    background_down: ''
+    background_color: 0, 0, 0, 0
+    color: app.text_color
+    font_name: app.font
+    font_size: sp(16) * app.font_scale
+    option_cls: 'AppSpinnerOption'
+    canvas.before:
+        Color:
+            rgba: app.card_color
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(app.radius), ]
+
+# اللوڨو: يُقَصّ عند حافة خانة الاسم، مع لمسة زخرفة (توهّج + نجمتان + نقطتان)
+<LogoBox>:
+    canvas.before:
+        Color:
+            rgba: app.primary_color[0], app.primary_color[1], app.primary_color[2], 0.10
+        Ellipse:
+            pos: self.center_x - self.width * 0.40, self.y - self.height * 0.35
+            size: self.width * 0.80, self.height * 1.2
+        Color:
+            rgba: app.primary_color[0], app.primary_color[1], app.primary_color[2], 0.85
+        Line:
+            points: [self.x + self.width * 0.14 - dp(7), self.top - dp(14), self.x + self.width * 0.14 + dp(7), self.top - dp(14)]
+            width: 1.2
+        Line:
+            points: [self.x + self.width * 0.14, self.top - dp(14) - dp(7), self.x + self.width * 0.14, self.top - dp(14) + dp(7)]
+            width: 1.2
+        Line:
+            points: [self.x + self.width * 0.88 - dp(5), self.top - dp(10), self.x + self.width * 0.88 + dp(5), self.top - dp(10)]
+            width: 1.2
+        Line:
+            points: [self.x + self.width * 0.88, self.top - dp(10) - dp(5), self.x + self.width * 0.88, self.top - dp(10) + dp(5)]
+            width: 1.2
+        Ellipse:
+            pos: self.x + self.width * 0.62, self.top - dp(12)
+            size: dp(4), dp(4)
+        Ellipse:
+            pos: self.x + self.width * 0.30, self.top - dp(18)
+            size: dp(3), dp(3)
+
 <BirthdayRow>:
     orientation: 'horizontal'
     size_hint_y: None
-    height: max(dp(74), dp(app.btn_height) + dp(20))
-    padding: dp(10)
+    height: dp(90)
+    padding: [dp(16), dp(10), dp(10), dp(10)]
     spacing: dp(10)
     canvas.before:
         Color:
@@ -92,21 +153,151 @@
             pos: self.pos
             size: self.size
             radius: [dp(app.radius), ]
-    Label:
-        text: root.info
-        font_name: app.font
-        font_size: sp(14) * app.font_scale
-        color: app.text_color
-        size_hint_x: 0.7
-        halign: 'left'
-        valign: 'middle'
-        text_size: self.size
-    StyledButton:
-        text: 'Delete'
-        custom_bg: [0.85, 0.2, 0.2, 1]
-        size_hint_x: 0.3
-        pos_hint: {'center_y': 0.5}
-        on_press: app.delete_birthday(root.bname, root.bdate)
+        Color:
+            rgba: root.days_color
+        RoundedRectangle:
+            pos: self.x + dp(5), self.y + dp(14)
+            size: dp(4), self.height - dp(28)
+            radius: [dp(2), ]
+    BoxLayout:
+        orientation: 'vertical'
+        Label:
+            text: root.name_text
+            font_name: app.font
+            font_size: sp(16) * app.font_scale
+            color: app.text_color
+            size_hint_y: 0.4
+            halign: 'left'
+            valign: 'middle'
+            text_size: self.size
+        Label:
+            text: root.sub_text
+            font_name: app.font
+            font_size: sp(12) * app.font_scale
+            color: app.muted_color
+            size_hint_y: 0.3
+            halign: 'left'
+            valign: 'middle'
+            text_size: self.size
+        Label:
+            text: root.days_text
+            font_name: app.font
+            font_size: sp(13) * app.font_scale
+            color: root.days_color
+            size_hint_y: 0.3
+            halign: 'left'
+            valign: 'middle'
+            text_size: self.size
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_x: None
+        width: dp(86)
+        spacing: dp(6)
+        StyledButton:
+            text: 'Edit'
+            height: dp(32)
+            custom_bg: [0.35, 0.35, 0.45, 1]
+            on_release: app.edit_birthday(root.bname, root.bdate)
+        StyledButton:
+            text: 'Delete'
+            height: dp(32)
+            custom_bg: [0.85, 0.2, 0.2, 1]
+            on_release: app.ask_delete(root.bname, root.bdate)
+
+<DatePopup>:
+    title: 'Edit birthday' if root.show_name else 'Birth date'
+    title_font: app.font
+    title_color: app.text_color
+    separator_color: app.primary_color
+    background: ''
+    background_color: app.bg_color
+    size_hint: 0.92, None
+    height: dp(250) + (dp(62) if root.show_name else 0)
+    auto_dismiss: True
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: dp(10)
+        padding: [0, dp(6), 0, 0]
+        InputBox:
+            height: dp(50) if root.show_name else 0
+            opacity: 1 if root.show_name else 0
+            disabled: not root.show_name
+            CustomTextInput:
+                id: name_in
+                hint_text: 'Name'
+        BoxLayout:
+            size_hint_y: None
+            height: dp(50)
+            spacing: dp(8)
+            AppSpinner:
+                id: day_sp
+                size_hint_x: 0.24
+            AppSpinner:
+                id: month_sp
+                size_hint_x: 0.36
+            AppSpinner:
+                id: year_sp
+                size_hint_x: 0.40
+        Label:
+            id: err
+            text: ''
+            font_name: app.font
+            font_size: sp(12) * app.font_scale
+            color: 0.9, 0.25, 0.25, 1
+            size_hint_y: None
+            height: dp(22)
+        BoxLayout:
+            size_hint_y: None
+            height: dp(app.btn_height)
+            spacing: dp(10)
+            StyledButton:
+                text: 'Cancel'
+                custom_bg: [0.45, 0.45, 0.52, 1]
+                on_release: root.dismiss()
+            StyledButton:
+                text: 'Save'
+                on_release: root.confirm()
+
+<ConfirmPopup>:
+    title: 'Confirm'
+    title_font: app.font
+    title_color: app.text_color
+    separator_color: app.primary_color
+    background: ''
+    background_color: app.bg_color
+    size_hint: 0.88, None
+    height: dp(150) + dp(app.btn_height)
+    auto_dismiss: True
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: dp(10)
+        padding: [0, dp(6), 0, 0]
+        Label:
+            text: root.msg
+            font_name: app.font
+            font_size: sp(15) * app.font_scale
+            color: app.text_color
+            size_hint_y: None
+            height: dp(28)
+        Label:
+            text: root.sub
+            font_name: app.font
+            font_size: sp(16) * app.font_scale
+            color: app.muted_color
+            size_hint_y: None
+            height: dp(32)
+        BoxLayout:
+            size_hint_y: None
+            height: dp(app.btn_height)
+            spacing: dp(10)
+            StyledButton:
+                text: 'Cancel'
+                custom_bg: [0.45, 0.45, 0.52, 1]
+                on_release: root.dismiss()
+            StyledButton:
+                text: 'Delete'
+                custom_bg: [0.85, 0.2, 0.2, 1]
+                on_release: root.yes()
 
 # ---------------------------------------------------------------
 # الشاشات
@@ -115,28 +306,47 @@
 <BirthdaysScreen>:
     BoxLayout:
         orientation: 'vertical'
-        padding: dp(16)
+        padding: [dp(16), dp(24), dp(16), dp(16)]
         spacing: dp(12)
-        Label:
-            text: 'BFB'
-            font_name: app.font
-            font_size: sp(44) * app.font_scale
-            bold: True
-            color: app.primary_color
+        # اللوڨو + خانة الاسم ملتصقان (الحافة العليا للخانة تقصّ اللوڨو)
+        BoxLayout:
+            orientation: 'vertical'
             size_hint_y: None
-            height: root.height * 0.26
-            text_size: self.size
-            padding: [0, 0, 0, dp(14)]
-            halign: 'center'
-            valign: 'bottom'
+            spacing: 0
+            height: logo_box.height + dp(50)
+            LogoBox:
+                id: logo_box
+                size_hint_y: None
+                height: (self.width * 1.1 / 2.368) * 0.65 + dp(6)
+                Image:
+                    source: 'bfb_logo_new.png'
+                    color: app.primary_color
+                    size_hint: None, None
+                    width: self.parent.width * 1.1
+                    height: self.width / 2.368
+                    allow_stretch: True
+                    keep_ratio: True
+                    x: self.parent.center_x - self.width / 2
+                    y: self.parent.y - self.height * 0.35 - (1 - root.rise) * self.height * 0.5
+            InputBox:
+                CustomTextInput:
+                    id: name_input
+                    hint_text: 'Enter Name'
         InputBox:
-            CustomTextInput:
-                id: name_input
-                hint_text: 'Enter Name'
-        InputBox:
-            CustomTextInput:
-                id: date_input
-                hint_text: 'YYYY-MM-DD'
+            Button:
+                id: date_btn
+                text: root.birth_str if root.birth_str else 'Select birth date'
+                font_name: app.font
+                font_size: sp(16) * app.font_scale
+                background_normal: ''
+                background_down: ''
+                background_color: 0, 0, 0, 0
+                color: app.text_color if root.birth_str else app.muted_color
+                text_size: self.size
+                halign: 'left'
+                valign: 'middle'
+                padding_x: dp(15)
+                on_release: root.open_date_picker()
         StyledButton:
             text: 'Add Birthday'
             bold: True
