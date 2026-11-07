@@ -15,4 +15,3 @@ while True:
     except Exception as e:
         core.log(f"service crash: {e}")
     time.sleep(1800)
-    
