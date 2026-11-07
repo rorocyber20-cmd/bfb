@@ -7,7 +7,7 @@ package.domain = org.bfb
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,json,ttf
 
-version = 0.1
+version = 0.2
 
 requirements = python3==3.11.5,hostpython3==3.11.5,kivy==2.3.0,plyer,certifi,pyjnius,android,arabic-reshaper,python-bidi==0.4.2,six
 
