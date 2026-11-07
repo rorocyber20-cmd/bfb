@@ -162,6 +162,28 @@ def days_until(date_str, today=None):
     return (nxt - today).days
 
 
+def next_age(date_str, today=None):
+    """العمر الذي سيكمله صاحب عيد الميلاد القادم."""
+    today = today or date.today()
+    born = datetime.strptime(date_str, "%Y-%m-%d").date()
+    nxt = _safe_replace_year(born, today.year)
+    if nxt < today:
+        nxt = _safe_replace_year(born, today.year + 1)
+    return max(nxt.year - born.year, 1)
+
+
+def check_birth(date_str, today=None):
+    """يرجع '' إن كان التاريخ صالحًا، وإلا نص الخطأ."""
+    today = today or date.today()
+    try:
+        born = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return "Wrong date format. Use YYYY-MM-DD"
+    if born > today:
+        return "That date is in the future"
+    return ""
+
+
 # ---------------------------------------------------------------
 # الإشعارات (مباشرة عبر نظام أندرويد، بدون plyer)
 # ---------------------------------------------------------------
